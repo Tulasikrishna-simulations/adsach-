@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>IAMD Labeling Tool — Indian Advertising Manipulation Dataset</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#050008;--panel:#0c0010;--card:#110015;--border:#22002a;--hi:#380040;
+  --pink:#ff2d78;--purple:#cc44ff;--cyan:#00e5ff;--green:#00e676;
+  --yellow:#ffd740;--orange:#ff6d00;--red:#ff1744;
+  --text:#f0e8ff;--dim:#8060a0;--faint:#2a0035;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+::-webkit-scrollbar{width:5px;background:var(--panel);}
+::-webkit-scrollbar-thumb{background:var(--hi);border-radius:3px;}
+input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:var(--border);border-radius:2px;outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--cyan);cursor:pointer;}
+textarea,input[type=text],input[type=password],select{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);border-radius:6px;outline:none;padding:10px 12px;}
+textarea:focus,input:focus,select:focus{border-color:var(--purple);}
+button{cursor:pointer;font-family:var(--mono);}
+.btn{padding:10px 20px;border:none;border-radius:7px;font-size:11px;font-weight:700;letter-spacing:0.1em;transition:all 0.2s;}
+.btn-primary{background:linear-gradient(135deg,var(--pink),var(--purple));color:white;}
+.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--dim);}
+.btn-secondary:hover{border-color:var(--purple);color:var(--purple);}
+.btn-green{background:var(--green);color:#000;}
+.btn-red{background:var(--red);color:white;}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;}
+.lbl{font-family:var(--mono);font-size:8px;color:var(--faint);letter-spacing:0.25em;text-transform:uppercase;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border);}
+.badge{font-family:var(--mono);font-size:9px;padding:2px 8px;border-radius:20px;display:inline-block;margin:2px 3px 2px 0;}
+.bar-wrap{margin-bottom:9px;}
+.bar-label{display:flex;justify-content:space-between;margin-bottom:3px;font-family:var(--mono);font-size:10px;color:var(--dim);}
+.bar-track{height:3px;background:var(--border);border-radius:2px;}
+.bar-fill{height:100%;border-radius:2px;transition:width 0.7s ease;}
+
+/* Header */
+header{background:rgba(5,0,8,0.93);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo{font-family:var(--mono);font-size:13px;font-weight:900;background:linear-gradient(135deg,var(--pink),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.stat-pill{font-family:var(--mono);font-size:9px;padding:3px 10px;border-radius:12px;background:var(--hi);color:var(--dim);}
+.stat-pill span{color:var(--cyan);font-weight:700;}
+
+/* Layout */
+.main{display:grid;grid-template-columns:1fr 400px;gap:16px;padding:16px;max-width:1400px;margin:0 auto;}
+.left{display:flex;flex-direction:column;gap:12px;}
+.right{display:flex;flex-direction:column;gap:12px;}
+
+/* Progress */
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:8px;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--pink),var(--purple));border-radius:2px;transition:width 0.5s ease;}
+
+/* Score display */
+.score-big{font-family:var(--mono);font-size:52px;font-weight:900;line-height:1;letter-spacing:-2px;}
+.score-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;}
+.score-cell{text-align:center;background:var(--bg);border-radius:8px;padding:10px 0;}
+.score-val{font-family:var(--mono);font-size:20px;font-weight:900;line-height:1;}
+.score-lbl{font-family:var(--mono);font-size:8px;color:var(--faint);margin-top:4px;letter-spacing:0.15em;}
+
+/* Dataset list */
+.ds-item{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:8px;cursor:pointer;transition:border-color 0.2s;}
+.ds-item:hover{border-color:var(--purple);}
+.ds-item.active{border-color:var(--pink);}
+.ds-item.labeled{border-color:var(--green);}
+.ds-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.ds-text{font-size:11px;color:var(--dim);line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:14px;}
+.tab{font-family:var(--mono);font-size:9px;padding:5px 12px;background:transparent;border:1px solid transparent;color:var(--dim);border-radius:4px;cursor:pointer;letter-spacing:0.1em;text-transform:uppercase;}
+.tab.active{background:var(--hi);border-color:var(--border);color:var(--text);}
+
+/* Export */
+.export-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:var(--mono);font-size:9px;color:var(--dim);max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;}
+
+/* Verdict buttons */
+.verdict-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+.verdict-btn{padding:10px;border-radius:8px;font-family:var(--mono);font-size:10px;font-weight:700;border:1px solid;cursor:pointer;transition:all 0.2s;text-align:center;}
+.verdict-btn.selected{opacity:1;transform:scale(1.02);}
+.verdict-btn:not(.selected){opacity:0.4;}
+
+@media(max-width:900px){.main{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">IAMD — Labeling Tool</div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <div class="stat-pill">Labeled: <span id="labeledCount">0</span></div>
+    <div class="stat-pill">Total: <span id="totalCount">0</span></div>
+    <div class="stat-pill">Dataset: <span id="datasetSize">0</span> ads</div>
+    <button class="btn btn-secondary" style="font-size:9px;padding:5px 10px;" onclick="exportData()">⬇ Export JSON</button>
+    <button class="btn btn-secondary" style="font-size:9px;padding:5px 10px;" onclick="exportCSV()">⬇ Export CSV</button>
+  </div>
+</header>
+
+<div class="main">
+  <!-- LEFT: Input + Scoring -->
+  <div class="left">
+
+    <!-- Add new ad -->
+    <div class="panel">
+      <div class="lbl">Add New Advertisement to Dataset</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:4px;">BRAND NAME</div>
+          <input type="text" id="brandInput" placeholder="e.g. Maggi, Bournvita, KFC..." style="width:100%;font-size:11px;"/>
+        </div>
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:4px;">CATEGORY</div>
+          <select id="catInput" style="width:100%;font-size:11px;">
+            <option value="food">Food & Beverage</option>
+            <option value="health">Health & Nutrition</option>
+            <option value="beauty">Beauty & Personal Care</option>
+            <option value="gutka">Tobacco / Pan Masala</option>
+            <option value="education">Education</option>
+            <option value="finance">Finance & Insurance</option>
+            <option value="tech">Technology</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:4px;">AD TEXT — paste the actual advertisement text</div>
+      <textarea id="adText" rows="5" placeholder="Paste the ad text here — from TV voiceover, Instagram caption, packet text, hoarding, or any Indian advertisement..." style="width:100%;font-size:12px;line-height:1.7;resize:vertical;"></textarea>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:4px;">SOURCE</div>
+          <input type="text" id="sourceInput" placeholder="TV ad, Instagram, packet, hoarding..." style="width:100%;font-size:11px;"/>
+        </div>
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:4px;">REGULATORY FLAG (if any)</div>
+          <input type="text" id="regInput" placeholder="ASCI 2023, FSSAI order, NCPCR notice..." style="width:100%;font-size:11px;"/>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:6px;margin-top:10px;align-items:center;">
+        <label style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--dim);cursor:pointer;">
+          <input type="checkbox" id="childTarget" style="accent-color:var(--purple);"/> Targets children
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--dim);cursor:pointer;">
+          <input type="checkbox" id="celebFlag" style="accent-color:var(--orange);"/> Celebrity endorsement
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--dim);cursor:pointer;">
+          <input type="checkbox" id="healthClaim" style="accent-color:var(--green);"/> Health claim
+        </label>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="scoreAd()">SCORE THIS AD →</button>
+        <button class="btn btn-secondary" onclick="loadSample()">Load Sample</button>
+      </div>
+    </div>
+
+    <!-- Scoring results -->
+    <div class="panel" id="scorePanel" style="display:none;">
+      <div class="lbl">PAVE-C v2.0 — Auto Score</div>
+
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;margin-bottom:16px;">
+        <div style="text-align:center;">
+          <div class="score-big" id="tsDisplay">--</div>
+          <div style="font-family:var(--mono);font-size:8px;color:var(--faint);margin-top:4px;">/ 100</div>
+        </div>
+        <div>
+          <div class="bar-wrap">
+            <div class="bar-label"><span>Honesty level</span><span id="honestyVal" style="color:var(--green);">--%</span></div>
+            <div class="bar-track"><div class="bar-fill" id="honestyBar" style="background:var(--green);width:0%"></div></div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-label"><span>MPI — Manipulation Pressure</span><span id="mpiVal" style="color:var(--red);">--%</span></div>
+            <div class="bar-track"><div class="bar-fill" id="mpiBar" style="background:var(--red);width:0%"></div></div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-label"><span>H_ψ — Decision Compression</span><span id="hpsiVal" style="color:var(--yellow);">--%</span></div>
+            <div class="bar-track"><div class="bar-fill" id="hpsiBar" style="background:var(--yellow);width:0%"></div></div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-label"><span>LPS — Linguistic Pressure</span><span id="lpsVal" style="color:var(--orange);">--%</span></div>
+            <div class="bar-track"><div class="bar-fill" id="lpsBar" style="background:var(--orange);width:0%"></div></div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-label"><span>VI — Verifiability</span><span id="viVal" style="color:var(--cyan);">--%</span></div>
+            <div class="bar-track"><div class="bar-fill" id="viBar" style="background:var(--cyan);width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="techBadges" style="margin-bottom:14px;"></div>
+
+      <!-- Human label override -->
+      <div style="border-top:1px solid var(--border);padding-top:14px;">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:8px;">HUMAN VERDICT — confirm or override the AI score:</div>
+        <div class="verdict-grid">
+          <button class="verdict-btn" style="color:var(--green);border-color:var(--green);" onclick="setVerdict('HONEST')" id="v_HONEST">🟢 HONEST</button>
+          <button class="verdict-btn" style="color:var(--yellow);border-color:var(--yellow);" onclick="setVerdict('QUESTIONABLE')" id="v_QUESTIONABLE">🟡 QUESTIONABLE</button>
+          <button class="verdict-btn" style="color:var(--orange);border-color:var(--orange);" onclick="setVerdict('MISLEADING')" id="v_MISLEADING">🟠 MISLEADING</button>
+          <button class="verdict-btn" style="color:var(--red);border-color:var(--red);" onclick="setVerdict('HARMFUL')" id="v_HARMFUL">🔴 HARMFUL</button>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:4px;">ANNOTATION NOTES (optional)</div>
+          <textarea id="annotNotes" rows="2" placeholder="Any notes about this ad — why you labeled it this way, what stood out..." style="width:100%;font-size:11px;"></textarea>
+        </div>
+
+        <button class="btn btn-green" style="width:100%;margin-top:10px;font-size:11px;" onclick="saveToDataset()">
+          ✓ SAVE TO DATASET
+        </button>
+      </div>
+    </div>
+
+    <!-- Samples to label -->
+    <div class="panel">
+      <div class="lbl">Quick Load — Common Indian Ads to Label</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        <button class="btn btn-secondary" style="font-size:9px;" onclick="loadQuick('boost')">💪 Boost</button>
+        <button class="btn btn-secondary" style="font-size:9px;" onclick="loadQuick('complan')">🥛 Complan</button>
+        <button class="btn btn-secondary" style="font-size:9px;" onclick="loadQuick('dettol')">🧼 Dettol</button>
+        <button class="btn btn-secondary" style="font-size:9px;" onclick="loadQuick('lays')">🍟 Lays</button>
+        <button class="btn btn-secondary" style="font-size:9px;" onclick="loadQuick('byju')">📚 BYJU'S</button>
+        <button class="btn btn-secondary" style="font-size:9px;" onclick="loadQuick('patanjali')">🌿 Patanjali</button>
+        <button class="btn btn-secondary" style="font-size:9px;" onclick="loadQuick('fairever')">💄 Fair Ever</button>
+        <button class="btn btn-secondary" style="font-size:9px;" onclick="loadQuick('eno')">💊 ENO</button>
+        <button class="btn btn-secondary" style="font-size:9px;" onclick="loadQuick('amul')">🧈 Amul</button>
+        <button class="btn btn-secondary" style="font-size:9px;" onclick="loadQuick('hajmola')">🍬 Hajmola</button>
+        <button class="btn btn-secondary" style="font-size:9px;" onclick="loadQuick('lifebuoy')">🧼 Lifebuoy</button>
+        <button class="btn btn-secondary" style="font-size:9px;" onclick="loadQuick('sunfeast')">🍪 Sunfeast</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: Dataset view + export -->
+  <div class="right">
+
+    <div class="panel">
+      <div class="lbl">Dataset Progress</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--dim);">Labeled ads</span>
+        <span style="font-family:var(--mono);font-size:18px;font-weight:900;color:var(--cyan);" id="progressNum">0 / 50</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressBar" style="width:0%"></div></div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--faint);margin-top:8px;">50 ads = minimum viable dataset for inter-rater reliability study</div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:14px;">
+        <div style="text-align:center;background:var(--bg);border-radius:7px;padding:8px 0;">
+          <div style="font-family:var(--mono);font-size:16px;font-weight:900;color:var(--green);" id="countHonest">0</div>
+          <div style="font-family:var(--mono);font-size:8px;color:var(--faint);">HONEST</div>
+        </div>
+        <div style="text-align:center;background:var(--bg);border-radius:7px;padding:8px 0;">
+          <div style="font-family:var(--mono);font-size:16px;font-weight:900;color:var(--yellow);" id="countQ">0</div>
+          <div style="font-family:var(--mono);font-size:8px;color:var(--faint);">QUESTION.</div>
+        </div>
+        <div style="text-align:center;background:var(--bg);border-radius:7px;padding:8px 0;">
+          <div style="font-family:var(--mono);font-size:16px;font-weight:900;color:var(--orange);" id="countM">0</div>
+          <div style="font-family:var(--mono);font-size:8px;color:var(--faint);">MISLEAD.</div>
+        </div>
+        <div style="text-align:center;background:var(--bg);border-radius:7px;padding:8px 0;">
+          <div style="font-family:var(--mono);font-size:16px;font-weight:900;color:var(--red);" id="countH">0</div>
+          <div style="font-family:var(--mono);font-size:8px;color:var(--faint);">HARMFUL</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dataset list -->
+    <div class="panel" style="max-height:420px;overflow-y:auto;">
+      <div class="lbl">Labeled Entries</div>
+      <div id="datasetList">
+        <div style="text-align:center;padding:30px 0;color:var(--faint);font-family:var(--mono);font-size:11px;">No entries yet — start labeling ads</div>
+      </div>
+    </div>
+
+    <!-- Export -->
+    <div class="panel">
+      <div class="lbl">Export Dataset</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <button class="btn btn-primary" onclick="exportData()" style="font-size:10px;">⬇ JSON (HuggingFace)</button>
+        <button class="btn btn-secondary" onclick="exportCSV()" style="font-size:10px;">⬇ CSV (Excel/Sheets)</button>
+      </div>
+      <button class="btn btn-secondary" style="width:100%;font-size:10px;margin-bottom:10px;" onclick="exportMarkdown()">⬇ Markdown (README)</button>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--faint);line-height:1.8;">
+        JSON format: HuggingFace dataset upload ready<br>
+        CSV format: Google Sheets / Excel compatible<br>
+        Includes: brand, category, ad_text, auto_scores (all 10 metrics), human_verdict, regulatory_flag, child_target, celebrity, notes, timestamp
+      </div>
+    </div>
+
+    <!-- Dataset card preview -->
+    <div class="panel">
+      <div class="lbl">HuggingFace Dataset Card Preview</div>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;font-family:var(--mono);font-size:9px;color:var(--dim);line-height:2;">
+        <div style="color:var(--cyan);">---</div>
+        <div>license: cc-by-4.0</div>
+        <div>language: en</div>
+        <div>tags: advertising, manipulation, india, consumer-protection, pave-c</div>
+        <div style="color:var(--cyan);">---</div>
+        <div style="color:var(--purple);margin-top:4px;"># Indian Advertising Manipulation Dataset (IAMD)</div>
+        <div style="margin-top:4px;"><span style="color:var(--text);">Author:</span> Sadhana Ravichandra Tulasi Krishna</div>
+        <div><span style="color:var(--text);">Paper:</span> Zenodo DOI [pending]</div>
+        <div style="color:var(--text);margin-top:8px;" id="cardStats">0 labeled Indian advertisements scored via PAVE-C v2.0</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── PRE-LOADED SAMPLE ADS ─────────────────────────────────────────────────────
+const QUICK_ADS = {
+  boost: { brand:"Boost", cat:"health", text:"Boost is the secret of my energy! Sachin Tendulkar drinks Boost every day — it helps him stay at the top of his game. The energy drink with iron, vitamins and minerals. Boost your child's stamina and strength. Champions choose Boost!", source:"TV advertisement", reg:"ASCI complaint history", child:true, celeb:true, health:true },
+  complan: { brand:"Complan", cat:"health", text:"Complan grows children 2× faster! With 34 vital nutrients, Complan is scientifically proven to make your child grow taller and become smarter. Give your child the complete planned nutrition they deserve. Doctors recommend Complan for growing children.", source:"TV advertisement", reg:"ASCI ruling — growth claims", child:true, celeb:false, health:true },
+  dettol: { brand:"Dettol", cat:"health", text:"Dettol kills 99.9% of germs and bacteria. Protect your family from illness. Trusted by doctors and hospitals for over 80 years. Don't take chances with your family's health — use Dettol, the #1 trusted antiseptic brand in India.", source:"TV / packaging", reg:"", child:false, celeb:false, health:true },
+  lays: { brand:"Lay's India", cat:"food", text:"No one can eat just one! Lay's — America's #1 potato chip, now in India. Irresistibly delicious flavors — Magic Masala, Cream & Onion, and more. Made from the finest potatoes. Happiness in every pack!", source:"TV / digital", reg:"", child:false, celeb:false, health:false },
+  byju: { brand:"BYJU'S", cat:"education", text:"BYJU'S — the world's most valuable edtech company! Our AI-powered learning makes your child fall in love with learning. 150 million students trust BYJU'S. Guaranteed improvement in marks or full refund. Join now — limited offer ends tonight!", source:"Digital / TV advertisement", reg:"NCPCR complaints, aggressive sales practices", child:true, celeb:false, health:false },
+  patanjali: { brand:"Patanjali Ayurveda", cat:"health", text:"100% natural, pure, and authentic. Patanjali products are made from ancient Ayurvedic formulas proven over thousands of years. No chemicals, no side effects, only natural goodness. Baba Ramdev's guarantee: if it doesn't work, return it. Your health is our mission.", source:"TV advertisement", reg:"ASCI rulings — multiple products", child:false, celeb:true, health:true },
+  fairever: { brand:"Fair & Ever", cat:"beauty", text:"Get visibly fairer skin in just 4 weeks! Our advanced fairness formula with SPF brightens your complexion and gives you the confidence to succeed. Used by leading models and actresses. Your fairness, your success story. Don't let dark skin hold you back.", source:"TV advertisement", reg:"ASCI complaint — fairness claim", child:false, celeb:true, health:false },
+  eno: { brand:"ENO Fruit Salt", cat:"health", text:"ENO — eno ek dum! Fast relief from acidity in just 6 seconds. The world's fastest acidity relief. Doctors recommend ENO. Safe for everyday use. Don't let acidity stop you — reach for ENO!", source:"TV advertisement", reg:"", child:false, celeb:false, health:true },
+  amul: { brand:"Amul Butter", cat:"food", text:"Amul — the taste of India. Pure, fresh, and delicious. Made from the milk of happy cows from Indian farms. No artificial colours, no preservatives. Amul butter has been India's favourite since 1946. The utterly butterly delicious choice!", source:"TV / print advertisement", reg:"", child:false, celeb:false, health:false },
+  hajmola: { brand:"Dabur Hajmola", cat:"health", text:"Hajmola — khao masti se, jeeyo masti se! The tangy digestive candy loved by millions. Helps digestion after heavy meals. 100% Ayurvedic ingredients. Kids love it! The fun way to good digestion.", source:"TV advertisement", reg:"", child:true, celeb:false, health:true },
+  lifebuoy: { brand:"Lifebuoy", cat:"health", text:"Lifebuoy kills 99.9% of germs in 10 seconds! Protect your family from dangerous diseases like diarrhoea and typhoid. Doctors recommend handwashing with Lifebuoy. With Active Silver Formula — the only soap with proven germ protection. Keep your family safe.", source:"TV advertisement", reg:"", child:true, celeb:false, health:true },
+  sunfeast: { brand:"Sunfeast Dark Fantasy", cat:"food", text:"Indulge in the ultimate chocolate fantasy. Sunfeast Dark Fantasy — pure indulgence in every bite. The biscuit that takes you to another world. Shah Rukh Khan's favourite. Surrender to the dark side of delicious.", source:"TV advertisement", reg:"", child:false, celeb:true, health:false },
+};
+
+// ── MATH ENGINE (full PAVE-C v2.0) ───────────────────────────────────────────
+const ME = {
+  _sp(t){return (t.match(/\d+\.?\d*\s*(g|mg|kg|ml|l|%|kcal|cal|cm|days?|weeks?|months?)\b/gi)||[]).length+(t.match(/\d+\s*percent/gi)||[]).length+(t.match(/\d+x|\d+\s*times?\b/gi)||[]).length;},
+  lps(text){
+    const ss=text.split(/[.!?]+/).map(s=>s.trim()).filter(s=>s.length>5),n=ss.length||1;
+    let wS=0,wT=0;
+    ss.forEach((s,idx)=>{
+      const i=idx+1,sl=s.toLowerCase(),sw=sl.split(/\s+/).filter(Boolean);
+      const modal=/\bmust\b|\bneed to\b|\bhave to\b/.test(sl)?0.95:/\bshould\b/.test(sl)?0.65:/\bcould\b|\bmight\b/.test(sl)?0.25:0;
+      const imp=/^(buy|get|try|order|act|grab|claim|hurry|rush|unlock|save|join|don'?t|never)\b/i.test(s.trim())?1:0;
+      const neg=Math.min(1,(s.match(/don'?t miss|never again|no more|last chance|now or never/gi)||[]).length*0.4);
+      const you=Math.min(1,(sw.filter(w=>/^(you|your|yourself|you're|you've)$/i.test(w)).length/sw.length)*8);
+      const sc=0.30*modal+0.30*imp+0.20*neg+0.20*you;
+      const wp=n>1?1+0.4*(1-(i-1)/(n-1)):1.4;
+      wS+=sc*wp;wT+=wp;
+    });
+    return Math.min(1,wS/(wT||1));
+  },
+  edv(text){
+    const tl=text.toLowerCase(),W=text.split(/\s+/).filter(Boolean).length||1;
+    const dims={fear:{t:["risk","danger","threat","warning","expire","miss","lose","urgent","afraid","harm"],ρ:0.15},desire:{t:["want","love","dream","perfect","beautiful","stunning","irresistible","crave"],ρ:0.12},guilt:{t:["regret","shame","fault","blame","wasted","missed","failed","disappoint"],ρ:0.18},excite:{t:["wow","exciting","thrill","awesome","fantastic","epic","incredible"],ρ:0.10},loss:{t:["lose","loss","gone","miss out","running out","sold out","only left","expires"],ρ:0.20},pride:{t:["exclusive","elite","premium","luxury","vip","select","chosen","worthy"],ρ:0.13},envy:{t:["others","everyone else","they have","join","don't be left"],ρ:0.17}};
+    const vec={};
+    for(const [k,{t,ρ}] of Object.entries(dims)){const m=t.filter(term=>tl.includes(term)).length;vec[k]=Math.min(1,(m/W)*ρ*50);}
+    const mag=Math.min(1,Math.sqrt(Object.values(vec).reduce((s,v)=>s+v*v,0)));
+    const sp=this._sp(text),eDims=Object.values(vec).filter(v=>v>0.05).length;
+    return{vec,mag,va:Math.min(1,sp/Math.max(1,eDims*0.5)),emi:mag*(1-Math.min(1,sp/Math.max(1,eDims*0.5)))};
+  },
+  sec(text){
+    const tl=text.toLowerCase();
+    const cats=[{terms:["absolutely","completely","perfectly","flawlessly","utterly","totally"],sc:0.8},{terms:["best","greatest","ultimate","world-class","finest","leading","number one","#1"],sc:0.7},{terms:["amazing","incredible","revolutionary","breakthrough","extraordinary","phenomenal","life-changing","guaranteed","proven"],sc:0.5},{terms:["unlike anything","beyond comparison","never seen before","one of a kind"],sc:0.9}];
+    let sw=0;const fired=[];
+    for(const{terms,sc}of cats){for(const t of terms){const e=t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const n=(tl.match(new RegExp(e,'g'))||[]).length;if(n){sw+=n*sc;fired.push(t);}}}
+    const sp=this._sp(text);
+    return{raw:sw/Math.max(sp,1),norm:Math.min(1,sw/Math.max(sp,1)/5),fired};
+  },
+  hpsi(text){
+    const tl=text.toLowerCase(),K=6,Hmax=Math.log2(K);
+    const techs=[{name:"Urgency",dp:0.35,tr:["hurry","now","today only","limited time","act now","expires","deadline","ends tonight"]},{name:"Scarcity",dp:0.30,tr:["only left","limited","selling out","few remaining","last chance","almost gone"]},{name:"FOMO",dp:0.40,tr:["don't miss","everyone","missing out","while you can","before it's gone"]},{name:"Authority",dp:0.20,tr:["expert","doctor","certified","proven","scientifically","clinically","recommended by"]},{name:"SocialProof",dp:0.15,tr:["millions","trusted by","rated","reviews","best seller","#1","crore"]},{name:"Reciprocity",dp:0.15,tr:["free","gift","bonus","complimentary","no charge","guarantee","refund"]}];
+    let pBuy=1/K;const act=[];
+    for(const t of techs){const hits=t.tr.filter(tr=>tl.includes(tr)).length;const a=Math.min(1,hits/2);if(a>0){pBuy=Math.min(0.92,pBuy+t.dp*a);act.push({name:t.name,a});}}
+    const pO=Math.max(0,(1-pBuy)/(K-1));
+    const H=-[pBuy,...Array(K-1).fill(pO)].reduce((s,p)=>s+(p>1e-10?p*Math.log2(p):0),0);
+    return{score:Math.max(0,Math.min(1,1-H/Hmax)),act};
+  },
+  pi(text){
+    const tl=text.toLowerCase();
+    const techs=[{name:"Urgency",w:0.22,tr:["hurry","now","today only","limited time","act now","expires","ends tonight"]},{name:"Scarcity",w:0.20,tr:["only left","limited","selling out","last chance","almost gone"]},{name:"FOMO",w:0.25,tr:["don't miss","everyone","missing out","while you can"]},{name:"Authority",w:0.15,tr:["expert","doctor","certified","proven","scientifically","recommended by"]},{name:"SocialProof",w:0.12,tr:["millions","trusted by","rated","reviews","best seller","crore"]},{name:"Reciprocity",w:0.10,tr:["free","gift","bonus","complimentary","guarantee","refund"]}];
+    let prod=1;const bd=[];
+    for(const t of techs){const p=Math.min(1,t.tr.filter(tr=>tl.includes(tr)).length/2);prod*=(1-t.w*p);if(p>0)bd.push({name:t.name,p});}
+    return{base:1-prod,bd};
+  },
+  vi(text){const ss=text.split(/[.!?;]+/).map(s=>s.trim()).filter(s=>s.length>8);const list=ss.length?ss:[text];let tot=0;for(const s of list){const hasN=/\d/.test(s),hasU=/\b(g|mg|%|ml|kg|kcal|cal)\b/i.test(s);const vague=/(amazing|incredible|best|great|revolutionary|ultimate|proven|guaranteed|fastest|world)/i.test(s);const sp=(hasN&&hasU)?1.0:hasN?0.65:vague?0.15:0.50;tot+=(vague?0.25:0.80)*sp;}return Math.min(1,tot/list.length);},
+  as(text){const w=text.toLowerCase().split(/\s+/).filter(Boolean),W=w.length||1;const sp=Math.min(1,this._sp(text)/3);const hg=Math.min(1,w.filter(x=>/^(may|might|could|typically|often|approximately|about)$/.test(x)).length/W*20);const ab=w.filter(x=>/^(always|never|guaranteed|definitely|certainly|absolutely|perfect)$/.test(x)).length;return Math.max(0,Math.min(1,0.5*sp+0.3*hg+0.3-Math.min(0.4,ab/W*15)));},
+  clf(text){const W=text.split(/\s+/).filter(Boolean).length||1;const exc=(text.match(/!/g)||[]).length,caps=(text.match(/\b[A-Z]{2,}\b/g)||[]).length;return Math.min(1,0.35*Math.min(1,W/150)+0.45*Math.min(1,((exc+caps)/W)*8)+0.20*0.5);},
+  analyze(text){
+    if(!text.trim())return null;
+    const lpsV=this.lps(text),edvR=this.edv(text),secR=this.sec(text);
+    const hpsiR=this.hpsi(text),piR=this.pi(text),viV=this.vi(text);
+    const asV=this.as(text),clfV=this.clf(text);
+    const mpi=Math.min(1,piR.base*(1+0.3*lpsV+0.2*secR.norm));
+    const drs=Math.min(1,0.28*mpi+0.22*(1-viV)+0.18*(1-asV)+0.18*hpsiR.score+0.14*secR.norm);
+    const cbf=(edvR.mag+clfV)/2;
+    const ts=Math.max(1,Math.round((1-drs)*(1-cbf)*100));
+    return{lps:lpsV,edv:edvR,sec:secR,hpsi:hpsiR,pi:piR,vi:viV,as:asV,clf:clfV,mpi,drs,cbf,ts};
+  }
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let dataset = JSON.parse(localStorage.getItem('iamd_dataset')||'[]');
+let currentScore = null;
+let currentVerdict = null;
+
+// ── FUNCTIONS ─────────────────────────────────────────────────────────────────
+function loadQuick(key){
+  const ad=QUICK_ADS[key];
+  document.getElementById('brandInput').value=ad.brand;
+  document.getElementById('catInput').value=ad.cat;
+  document.getElementById('adText').value=ad.text;
+  document.getElementById('sourceInput').value=ad.source;
+  document.getElementById('regInput').value=ad.reg;
+  document.getElementById('childTarget').checked=ad.child;
+  document.getElementById('celebFlag').checked=ad.celeb;
+  document.getElementById('healthClaim').checked=ad.health;
+}
+
+function loadSample(){
+  const keys=Object.keys(QUICK_ADS);
+  loadQuick(keys[Math.floor(Math.random()*keys.length)]);
+}
+
+function scoreAd(){
+  const text=document.getElementById('adText').value.trim();
+  if(!text){alert('Please paste some ad text first.');return;}
+  currentScore=ME.analyze(text);
+  currentVerdict=null;
+  renderScore(currentScore);
+  document.getElementById('scorePanel').style.display='block';
+  document.getElementById('annotNotes').value='';
+  document.querySelectorAll('.verdict-btn').forEach(b=>b.classList.remove('selected'));
+  // auto-suggest verdict
+  const ts=currentScore.ts;
+  if(ts>=65)setVerdict('HONEST');
+  else if(ts>=45)setVerdict('QUESTIONABLE');
+  else if(ts>=25)setVerdict('MISLEADING');
+  else setVerdict('HARMFUL');
+  document.getElementById('scorePanel').scrollIntoView({behavior:'smooth'});
+}
+
+function renderScore(s){
+  const tsc=s.ts>=65?'#00e676':s.ts>=35?'#ffd740':'#ff1744';
+  const el=document.getElementById('tsDisplay');
+  el.textContent=s.ts;
+  el.style.color=tsc;
+  el.style.textShadow=`0 0 30px ${tsc}60`;
+
+  const set=(id,bar,val,pct)=>{
+    document.getElementById(id).textContent=Math.round(val*100)+'%';
+    document.getElementById(bar).style.width=Math.round(pct)+'%';
+  };
+  set('honestyVal','honestyBar',(1-s.drs),(1-s.drs)*100);
+  set('mpiVal','mpiBar',s.mpi,s.mpi*100);
+  set('hpsiVal','hpsiBar',s.hpsi.score,s.hpsi.score*100);
+  set('lpsVal','lpsBar',s.lps,s.lps*100);
+  set('viVal','viBar',s.vi,s.vi*100);
+
+  const badges=document.getElementById('techBadges');
+  badges.innerHTML='';
+  s.hpsi.act.forEach(t=>{
+    const b=document.createElement('span');
+    b.className='badge';
+    b.style.cssText=`background:#ff174420;border:1px solid #ff174450;color:#ff1744;`;
+    b.textContent=t.name;
+    badges.appendChild(b);
+  });
+  if(s.sec.sp>0){
+    const b=document.createElement('span');
+    b.className='badge';
+    b.style.cssText=`background:#00e67620;border:1px solid #00e67650;color:#00e676;`;
+    b.textContent=`✓ ${s.sec.sp} specific claims`;
+    badges.appendChild(b);
+  }
+  if(s.sec.fired.length>0&&s.sec.sp===0){
+    const b=document.createElement('span');
+    b.className='badge';
+    b.style.cssText=`background:#ff6d0020;border:1px solid #ff6d0050;color:#ff6d00;`;
+    b.textContent='⚠ hype, no measurements';
+    badges.appendChild(b);
+  }
+}
+
+function setVerdict(v){
+  currentVerdict=v;
+  document.querySelectorAll('.verdict-btn').forEach(b=>{
+    b.classList.toggle('selected',b.id==='v_'+v);
+  });
+}
+
+function saveToDataset(){
+  if(!currentScore){alert('Score an ad first.');return;}
+  if(!currentVerdict){alert('Select a human verdict.');return;}
+  const brand=document.getElementById('brandInput').value.trim()||'Unknown';
+  const cat=document.getElementById('catInput').value;
+  const text=document.getElementById('adText').value.trim();
+  if(!text){alert('No ad text.');return;}
+
+  const entry={
+    id:`iamd_${Date.now()}`,
+    brand,category:cat,
+    ad_text:text,
+    source:document.getElementById('sourceInput').value.trim(),
+    regulatory_flag:document.getElementById('regInput').value.trim(),
+    targets_children:document.getElementById('childTarget').checked,
+    celebrity_endorsement:document.getElementById('celebFlag').checked,
+    health_claim:document.getElementById('healthClaim').checked,
+    // auto scores
+    ts:currentScore.ts,
+    lps:+(currentScore.lps*100).toFixed(1),
+    edv_magnitude:+(currentScore.edv.mag*100).toFixed(1),
+    sec_raw:+currentScore.sec.raw.toFixed(2),
+    sec_norm:+(currentScore.sec.norm*100).toFixed(1),
+    hpsi:+(currentScore.hpsi.score*100).toFixed(1),
+    mpi:+(currentScore.mpi*100).toFixed(1),
+    vi:+(currentScore.vi*100).toFixed(1),
+    as_score:+(currentScore.as*100).toFixed(1),
+    clf:+(currentScore.clf*100).toFixed(1),
+    drs:+(currentScore.drs*100).toFixed(1),
+    cbf:+(currentScore.cbf*100).toFixed(1),
+    pi_base:+(currentScore.pi.base*100).toFixed(1),
+    // human label
+    human_verdict:currentVerdict,
+    annotator_notes:document.getElementById('annotNotes').value.trim(),
+    annotator:'SRT Krishna',
+    timestamp:new Date().toISOString(),
+  };
+
+  dataset.push(entry);
+  localStorage.setItem('iamd_dataset',JSON.stringify(dataset));
+  updateUI();
+  // clear form
+  document.getElementById('adText').value='';
+  document.getElementById('brandInput').value='';
+  document.getElementById('sourceInput').value='';
+  document.getElementById('regInput').value='';
+  document.getElementById('childTarget').checked=false;
+  document.getElementById('celebFlag').checked=false;
+  document.getElementById('healthClaim').checked=false;
+  document.getElementById('scorePanel').style.display='none';
+  currentScore=null;currentVerdict=null;
+}
+
+function updateUI(){
+  const n=dataset.length;
+  document.getElementById('labeledCount').textContent=n;
+  document.getElementById('totalCount').textContent=n;
+  document.getElementById('datasetSize').textContent=n;
+  document.getElementById('progressNum').textContent=`${n} / 50`;
+  document.getElementById('progressBar').style.width=Math.min(100,n/50*100)+'%';
+  const counts={HONEST:0,QUESTIONABLE:0,MISLEADING:0,HARMFUL:0};
+  dataset.forEach(d=>counts[d.human_verdict]=(counts[d.human_verdict]||0)+1);
+  document.getElementById('countHonest').textContent=counts.HONEST||0;
+  document.getElementById('countQ').textContent=counts.QUESTIONABLE||0;
+  document.getElementById('countM').textContent=counts.MISLEADING||0;
+  document.getElementById('countH').textContent=counts.HARMFUL||0;
+  document.getElementById('cardStats').textContent=`${n} labeled Indian advertisements scored via PAVE-C v2.0`;
+
+  const list=document.getElementById('datasetList');
+  if(n===0){list.innerHTML='<div style="text-align:center;padding:30px 0;color:var(--faint);font-family:var(--mono);font-size:11px;">No entries yet — start labeling ads</div>';return;}
+  list.innerHTML=dataset.slice().reverse().map((d,i)=>{
+    const vc={HONEST:'#00e676',QUESTIONABLE:'#ffd740',MISLEADING:'#ff6d00',HARMFUL:'#ff1744'};
+    const c=vc[d.human_verdict]||'#8060a0';
+    return `<div class="ds-item labeled" style="border-color:${c}40;">
+      <div class="ds-meta">
+        <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text);">${d.brand}</span>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span style="font-family:var(--mono);font-size:10px;font-weight:900;color:${c};">${d.ts}</span>
+          <span class="badge" style="background:${c}20;border:1px solid ${c}50;color:${c};">${d.human_verdict}</span>
+        </div>
+      </div>
+      <div class="ds-text">${d.ad_text.substring(0,80)}...</div>
+      <div style="display:flex;gap:4px;margin-top:6px;">
+        <span class="badge" style="background:var(--hi);color:var(--dim);">${d.category}</span>
+        ${d.targets_children?`<span class="badge" style="background:#cc44ff20;border:1px solid #cc44ff50;color:#cc44ff;">👶 children</span>`:''}
+        ${d.celebrity_endorsement?`<span class="badge" style="background:#ff6d0020;border:1px solid #ff6d0050;color:#ff6d00;">🎬 celeb</span>`:''}
+        ${d.regulatory_flag?`<span class="badge" style="background:#ff174420;border:1px solid #ff174450;color:#ff1744;">⚖ flagged</span>`:''}
+        <button onclick="removeEntry('${d.id}')" style="margin-left:auto;background:transparent;border:none;color:var(--faint);font-size:11px;cursor:pointer;">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function removeEntry(id){
+  dataset=dataset.filter(d=>d.id!==id);
+  localStorage.setItem('iamd_dataset',JSON.stringify(dataset));
+  updateUI();
+}
+
+function exportData(){
+  if(dataset.length===0){alert('No data to export yet.');return;}
+  const blob=new Blob([JSON.stringify({
+    dataset_name:"Indian Advertising Manipulation Dataset (IAMD)",
+    version:"1.0",
+    author:"Sadhana Ravichandra Tulasi Krishna",
+    paper:"Towards a Unified Framework for Verified Commercial Transparency",
+    license:"CC BY 4.0",
+    created:new Date().toISOString(),
+    total_entries:dataset.length,
+    schema:{id:"unique identifier",brand:"brand name",category:"ad category",ad_text:"original advertisement text",ts:"transparency score 0-100",human_verdict:"HONEST|QUESTIONABLE|MISLEADING|HARMFUL",lps:"linguistic pressure score %",edv_magnitude:"emotional density vector magnitude %",sec_raw:"semantic exaggeration coefficient (raw)",hpsi:"psychological entropy score %",mpi:"manipulation pressure index %",vi:"verifiability index %",as_score:"authenticity score %",clf:"cognitive load factor %",targets_children:"boolean",celebrity_endorsement:"boolean",health_claim:"boolean",regulatory_flag:"ASCI/FSSAI/NCPCR reference"},
+    data:dataset
+  },null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`iamd_v1_${dataset.length}entries_${new Date().toISOString().slice(0,10)}.json`;a.click();
+}
+
+function exportCSV(){
+  if(dataset.length===0){alert('No data to export yet.');return;}
+  const headers=['id','brand','category','ad_text','ts','human_verdict','lps','edv_magnitude','sec_raw','sec_norm','hpsi','mpi','vi','as_score','clf','drs','cbf','pi_base','targets_children','celebrity_endorsement','health_claim','regulatory_flag','source','annotator_notes','timestamp'];
+  const rows=dataset.map(d=>headers.map(h=>{const v=d[h];return typeof v==='string'?`"${v.replace(/"/g,'""')}"`:v;}));
+  const csv=[headers.join(','),...rows.map(r=>r.join(','))].join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`iamd_${dataset.length}entries_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+}
+
+function exportMarkdown(){
+  if(dataset.length===0){alert('No data to export yet.');return;}
+  const counts={HONEST:0,QUESTIONABLE:0,MISLEADING:0,HARMFUL:0};
+  dataset.forEach(d=>counts[d.human_verdict]=(counts[d.human_verdict]||0)+1);
+  const md=`# Indian Advertising Manipulation Dataset (IAMD)
+
+**Author:** Sadhana Ravichandra Tulasi Krishna  
+**License:** CC BY 4.0  
+**Version:** 1.0  
+**Entries:** ${dataset.length}  
+
+## About
+
+The IAMD is the first labeled dataset of Indian advertisements scored for psychological manipulation using the PAVE-C v2.0 framework. Each entry includes full ad text, automatic PAVE-C scores across 10 dimensions, a human verdict, and regulatory context where available.
+
+## Dataset Statistics
+
+| Verdict | Count |
+|---------|-------|
+| HONEST | ${counts.HONEST} |
+| QUESTIONABLE | ${counts.QUESTIONABLE} |
+| MISLEADING | ${counts.MISLEADING} |
+| HARMFUL | ${counts.HARMFUL} |
+| **Total** | **${dataset.length}** |
+
+## Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Unique identifier |
+| brand | string | Brand name |
+| category | string | food/health/beauty/gutka/education/finance/tech/other |
+| ad_text | string | Original advertisement text |
+| ts | int | PAVE-C v2.0 Transparency Score (0-100) |
+| human_verdict | string | HONEST/QUESTIONABLE/MISLEADING/HARMFUL |
+| lps | float | Linguistic Pressure Score (%) |
+| edv_magnitude | float | Emotional Density Vector magnitude (%) |
+| sec_raw | float | Semantic Exaggeration Coefficient (raw) |
+| hpsi | float | Psychological Entropy Score (%) |
+| mpi | float | Manipulation Pressure Index (%) |
+| vi | float | Verifiability Index (%) |
+| as_score | float | Authenticity Score (%) |
+| clf | float | Cognitive Load Factor (%) |
+| targets_children | bool | Whether ad targets children |
+| celebrity_endorsement | bool | Whether celebrity is used |
+| health_claim | bool | Whether health claims are made |
+| regulatory_flag | string | ASCI/FSSAI/NCPCR reference if available |
+
+## Citation
+
+\`\`\`bibtex
+@misc{tulasikrishna2026iamd,
+  author={Tulasi Krishna, Sadhana Ravichandra},
+  title={Indian Advertising Manipulation Dataset (IAMD)},
+  year={2026},
+  publisher={HuggingFace},
+  url={https://huggingface.co/datasets/tulasikrishna/indian-ad-manipulation-dataset}
+}
+\`\`\`
+
+## Paper
+
+Tulasi Krishna, S. R. (2026). Towards a Unified Framework for Verified Commercial Transparency: Bridging Product Truth and Advertising Integrity in the Indian Consumer Market.
+`;
+  const blob=new Blob([md],{type:'text/markdown'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='IAMD_README.md';a.click();
+}
+
+// init
+updateUI();
+</script>
+</body>
+</html>

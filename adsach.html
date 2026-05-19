@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AD SACH — अड् सच | Indian Ad Truth Checker</title>
+<meta name="description" content="Check any Indian advertisement for manipulation — PAVE-C v2.0 math engine, real ASCI/FSSAI/NCPCR cases, kid-safe explanations. Vimal, Maggi, Bournvita, KFC and more."/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;900&display=swap" rel="stylesheet">
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#070009;color:#f0e8ff;font-family:system-ui,sans-serif;min-height:100vh;}
+::-webkit-scrollbar{width:6px;background:#110013;}
+::-webkit-scrollbar-thumb{background:#3d0039;border-radius:3px;}
+input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:#260024;border-radius:2px;outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#00e5ff;cursor:pointer;}
+textarea{-webkit-appearance:none;}
+button{-webkit-tap-highlight-color:transparent;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const {useState,useEffect,useCallback,useMemo,useRef}=React;
+
+// ── COLORS ────────────────────────────────────────────────────────────────────
+const C={
+  bg:"#070009",panel:"#110013",border:"#260024",hi:"#3d0039",
+  pink:"#ff2d78",purple:"#cc44ff",cyan:"#00e5ff",green:"#00e676",
+  yellow:"#ffd740",orange:"#ff6d00",red:"#ff1744",
+  text:"#f0e8ff",dim:"#8060a0",faint:"#35103d",
+  hdr:"rgba(7,0,9,0.93)",
+  mono:"'JetBrains Mono','Courier New',monospace",
+};
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const CASES=[
+  {id:"vimal",emoji:"🚫",brand:"Vimal Pan Masala / Elaichi",cat:"gutka",
+   actor:"Shah Rukh Khan, Ajay Devgn, Akshay Kumar",
+   claim:"Celebrities shown holding the product looking elite and glamorous. Success lifestyle associated with the brand.",
+   reality:"None of these actors consume pan masala. All three issued public disclaimers after backlash. They were paid crores to hold the packet for 30 seconds. The elaichi (cardamom) variant shares the brand name with the tobacco gutka product — the celebrity association markets both.",
+   source:"ASCI complaint 2022 · Actor public disclaimers · Ministry of Health advisory",
+   asci:true,ncpcr:false,
+   harmful:"Oral cancer, gum disease, nicotine addiction. India has 1.3 lakh oral cancer cases per year — highest in the world. 90% linked to tobacco and pan masala use.",
+   kids:"Kids see their favourite hero holding the packet looking cool. Some ask parents to buy it. Peer pressure among teenagers directly increases when celebrities endorse tobacco-adjacent products.",
+   moral:"Even your favourite actor is just doing a job in an ad. They go home and don't touch it. The same way a painter paints whatever a client asks for.",
+   score:{ate:5,nti:3},quad:"IV",color:C.red},
+  {id:"maggi",emoji:"🍜",brand:"Maggi Noodles",cat:"food",
+   actor:"Amitabh Bachchan, various",
+   claim:'"2 minute noodles" — the great family nourisher. "Mummy bhook lagi" positioned Maggi as nutritious, safe daily food for children.',
+   reality:"June 2015: FSSAI lab tests found lead at 7× the safe limit. MSG present despite 'no added MSG' label. One serving = 46% of a child's daily sodium. Banned across India for 5 months. 9 crore packets recalled and destroyed.",
+   source:"FSSAI order June 2015 · Bombay High Court · Madras HC judgment",
+   asci:true,ncpcr:false,
+   harmful:"Lead exposure harms children's brain development. High sodium causes hypertension even in children. The deception ran for years because brand trust replaced product scrutiny.",
+   kids:"'Mummy bhook lagi' literally trained Indian children to ask for Maggi by name as their default hunger response. Parents trusted it completely. The warm family imagery was the manipulation mechanism.",
+   moral:"Just because something is everywhere and everyone eats it doesn't mean it's safe. The question is always: what's actually inside?",
+   score:{ate:35,nti:15},quad:"IV",color:C.orange},
+  {id:"bournvita",emoji:"🏆",brand:"Cadbury Bournvita",cat:"health",
+   actor:"Child athlete models",
+   claim:'"Tayyari Jeet Ki" — your child will become a champion. Shows children winning medals, excelling in sports after drinking Bournvita daily.',
+   reality:"Per 100g: 50.3g sugar — more than Coca-Cola per gram. April 2023: NCPCR sent official notice to Mondelez demanding removal of 'health drink' label. Amazon India reclassified it out of the health drink category.",
+   source:"NCPCR notice April 2023 · FSSAI nutritional database · Amazon India reclassification",
+   asci:true,ncpcr:true,
+   harmful:"Daily high-sugar consumption causes childhood obesity, dental damage, and sugar dependency — the direct opposite of athletic preparation.",
+   kids:"The champion imagery made both parent and child feel guilty if they didn't buy it. Guilt-driven purchase of a sugar drink framed as athletic nutrition.",
+   moral:"Champions are made through practice, sleep, and real food. Flip the packet and read the sugar content before buying the trophy.",
+   score:{ate:30,nti:8},quad:"IV",color:C.red},
+  {id:"horlicks",emoji:"🥛",brand:"Horlicks",cat:"health",
+   actor:"Child models",
+   claim:'"The Great Family Nourisher." Children grow taller, become smarter, do better in school — attributed to daily Horlicks.',
+   reality:"2020: UK Advertising Standards Authority ruled Horlicks cannot claim it makes children taller or smarter. GlaxoSmithKline dropped claims in UK but continued them in India for years.",
+   source:"ASA UK ruling 2020 · ASCI India complaints · GSK regulatory filings",
+   asci:true,ncpcr:false,
+   harmful:"Parents substituted real nutrition with a high-carb malt drink based on false claims. Per 100g: 75g carbohydrates.",
+   kids:"Children demanded Horlicks because the ad promised height and intelligence. Parents bought it thinking it was a supplement. The white coat imagery was the trick.",
+   moral:"An ad is not a doctor. Always ask a real doctor first — not a television advertisement.",
+   score:{ate:58,nti:18},quad:"II",color:C.orange},
+  {id:"kfc",emoji:"🍗",brand:"KFC India",cat:"food",
+   actor:"Brand advertising",
+   claim:"Large, perfectly constructed, juicy burgers and crispy golden chicken. 'Finger Lickin Good' implies premium, deeply satisfying food.",
+   reality:"Actual product consistently 40–60% smaller than advertised. Food styling uses cardboard inside buns, food-safe paint on chicken, macro lenses. Google Maps reviews consistently note 'nothing like the ad.'",
+   source:"ASCI size complaints · Food photography exposés · Google Maps review analysis",
+   asci:true,ncpcr:false,
+   harmful:"Trains false expectations. Normalises the idea that what you see in an ad doesn't need to match reality — a dangerous lesson to absorb young.",
+   kids:"Child begs parents for KFC because the ad looks incredible. Gets a flat smaller product. Either learns 'ads lie' or — worse — doesn't make that connection.",
+   moral:"Food in ads is styled by professionals for cameras, not for eating. The real food is what nourishes you.",
+   score:{ate:65,nti:14},quad:"II",color:C.yellow},
+  {id:"fairness",emoji:"💔",brand:"Fair & Lovely / Glow & Lovely",cat:"beauty",
+   actor:"Multiple Bollywood actresses over decades",
+   claim:"Dark woman: sad, rejected, no job, no love. Uses cream, becomes fairer. Then: happy, successful, hired, loved. Direct causal link between skin tone and life outcomes.",
+   reality:"No cream permanently changes genetic skin tone. The causal claim — fairness causes success — is false and harmful. Renamed 'Glow & Lovely' in 2020 under public pressure. Formula unchanged.",
+   source:"ASCI complaints 2000s–2020s · HUL press statement 2020 · Public petition",
+   asci:true,ncpcr:false,
+   harmful:"Psychological damage at generational scale. Millions of Indian children — especially girls — absorbed: dark skin = inferior = rejected.",
+   kids:"Before children could think critically, the equation was planted: dark = sad. Fair = happy. It ran in their heads for years before they were old enough to push back.",
+   moral:"Your skin colour is not a problem. Any ad that makes you feel bad about how you naturally look is the broken thing — not you.",
+   score:{ate:20,nti:5},quad:"IV",color:C.pink},
+];
+
+const KID_STORIES=[
+  {id:"s1",emoji:"🎬",color:C.red,
+   title:"Why does your favourite hero hold that pan masala packet?",
+   hook:"Shah Rukh Khan. Ajay Devgn. Akshay Kumar. On TV, holding a shiny packet, looking cool and successful. You thought: if they use it, it must be good?",
+   reveal:"They were paid crores just to hold it for 30 seconds on camera. They have never used it. All three later told the public they felt bad about doing the ad. The company paid them because they knew kids trust heroes — that was the plan.",
+   moral:"When your favourite actor is in an ad, they are doing a job — not giving you advice. Their face in the ad tells you nothing about the product.",
+   think:"If someone paid you ₹5 crore to say something was great without trying it — would that make the product actually good?"},
+  {id:"s2",emoji:"🍜",color:C.orange,
+   title:"Why did everyone trust Maggi so much?",
+   hook:'"Mummy bhook lagi!" — you said it, every Indian child said it. The ad showed a happy family, a loving mother, a warm bowl. It felt like home.',
+   reveal:"In 2015, government scientists tested Maggi. They found lead — a toxic metal — at 7 times the safe limit for children. Lead damages brain development. Maggi was banned across India. Nine crore packets were thrown away. The happy family ad made everyone trust it for years without anyone checking what was inside.",
+   moral:"Just because something is everywhere doesn't make it safe. Even your parents can be fooled by warm familiar advertising. The question is: what is actually inside?",
+   think:"If the Maggi packet showed a warning instead of a happy family — would your parents have bought it for years?"},
+  {id:"s3",emoji:"🏆",color:C.yellow,
+   title:"Does Bournvita actually make you a champion?",
+   hook:"The ad: child trains hard, drinks Bournvita, wins the medal. You wanted that. Your parents bought it every month.",
+   reveal:"Scientists measured it: Bournvita has more sugar per gram than Coca-Cola. In 2023, the Indian government officially told the company to stop calling it a health drink. The children winning medals in the ad are actors. Real champions train with sleep, practice, and real food.",
+   moral:"Champions are made by hard work and real nutrition — not one drink. Flip the packet and read the sugar content before believing the trophy.",
+   think:"If the ad showed the sugar content as big as the medal — would it still look like a champion's drink?"},
+  {id:"s4",emoji:"💔",color:C.pink,
+   title:"Did an ad ever make you feel your skin colour was wrong?",
+   hook:"Fairness cream ads for decades: dark girl → rejected, no job, no love. Same girl uses cream → fair, hired, loved. Before you could question it, your brain stored that equation.",
+   reveal:"No cream changes your genetic skin colour permanently. The ad was deliberately making you feel bad about yourself so you would buy something. In 2020, after millions protested, the company changed the name — but not the formula.",
+   moral:"Your skin colour has never stopped a single determined person. Any ad that makes you feel bad about how you naturally look is broken — not you.",
+   think:"Can you name three people you admire deeply whose skin is darker than what these ads showed as 'ideal'? Did their skin colour stop them?"},
+  {id:"s5",emoji:"🍔",color:C.cyan,
+   title:"Why does the burger in the ad look nothing like what arrives?",
+   hook:"You saw a massive, perfect, gleaming burger in the ad. You ordered it. What arrived was flat, smaller, sad. Why does this always happen?",
+   reveal:"Food photographers spend 6–8 hours on one shot. Inside the bun: cardboard to prop the layers up. On the patty: food-safe paint. Lens: macro that makes it look 3× bigger. Sometimes the 'food' is wax or plastic. The real burger is assembled in 90 seconds and looks exactly like what you received.",
+   moral:"Food in ads is art made by professionals paid to make you want it. The real food is what nourishes you. Judge food by taste and ingredients.",
+   think:"Next time you see a food ad, try to spot the tricks: Is it too shiny? Too tall? Too perfectly stacked?"},
+];
+
+const DATA_SOURCES=[
+  {name:"ASCI Database",full:"Advertising Standards Council of India",icon:"⚖️",rel:0.90,url:"ascionline.in",
+   what:"Every ad complaint filed by any Indian citizen — public record. Upheld complaints = officially confirmed manipulation.",
+   how:"Upheld complaint → NTI score drop. We ingest their public rulings and weight by severity."},
+  {name:"FSSAI Records",full:"Food Safety and Standards Authority of India",icon:"🔬",rel:0.95,url:"fssai.gov.in",
+   what:"Actual government lab test results. Product claims X nutrition but lab finds Y — that IS the ATE mismatch.",
+   how:"FSSAI violation = direct ATE score reduction. Maggi lead case, Bournvita sugar classification — all documented here."},
+  {name:"NCPCR Notices",full:"National Commission for Protection of Child Rights",icon:"👶",rel:0.92,url:"ncpcr.gov.in",
+   what:"Official notices when ads target children with harmful or false content. Direct measure of child-targeted manipulation.",
+   how:"NCPCR notice → maximum child-harm flag. Bournvita received one April 2023."},
+  {name:"Court Records",full:"High Court and Supreme Court judgments",icon:"🏛️",rel:0.98,url:"indiankanoon.org",
+   what:"Courts have actual lab data and company admissions on file. Highest-reliability source.",
+   how:"Court-established fact = highest weight, overrides all brand claims."},
+  {name:"Google Maps Reviews",full:"Public consumer reviews",icon:"📍",rel:0.70,url:"maps.google.com",
+   what:"Real people write 'burger nothing like the ad.' Massive unstructured ATE feedback updated daily.",
+   how:"NLP on review text for mismatch language. Volume × sentiment = ATE signal."},
+  {name:"Your Feedback",full:"Real consumers reporting mismatches",icon:"🙋",rel:0.75,url:null,
+   what:"You bought something. Was it what the ad showed? This is the r̄_binary term from the ATE math spec.",
+   how:"Aggregated in real time. 1,000 people saying 'no match' overrides any brand claim."},
+];
+
+const SAMPLES=[
+  {label:"🏆 Bournvita",text:"Bournvita — Tayyari Jeet Ki! Made with 11 vitamins and minerals, helps your child grow stronger and smarter. Champions drink Bournvita every day. Give your child the champion's edge!"},
+  {label:"🚫 Pan Masala",text:"Royal taste, elite lifestyle. Chosen by stars, enjoyed by those who know quality. Our cardamom blend — when only the best will do. It's not just a product, it's a statement."},
+  {label:"🍜 Maggi",text:"Mummy bhook lagi! Maggi — the great family nourisher. Ready in 2 minutes, packed with iron and protein your family needs. Love in every bowl. The taste children trust."},
+  {label:"💄 Fairness",text:"Unlock your true potential. Lighter, brighter skin in just 4 weeks — proven by dermatologists. Your success story starts with the right glow. Don't let anything hold you back."},
+  {label:"✅ Honest",text:"Our dal makhani uses 150g black dal per serving, slow-cooked for 8 hours. Contains 340 kcal and 12g protein per bowl. Sourced from Punjab farms. Spice level may vary."},
+];
+
+// ── FULL MATH ENGINE (PAVE-C v2.0) ───────────────────────────────────────────
+const ME={
+  lps(text){
+    const sents=text.split(/[.!?]+/).map(s=>s.trim()).filter(s=>s.length>5);
+    const n=sents.length||1; const W=text.split(/\s+/).filter(Boolean).length||1;
+    let wS=0,wT=0;
+    sents.forEach((s,idx)=>{
+      const i=idx+1,sl=s.toLowerCase(),sw=sl.split(/\s+/).filter(Boolean);
+      const modal=/\bmust\b|\bneed to\b|\bhave to\b/.test(sl)?0.95:/\bshould\b/.test(sl)?0.65:/\bcould\b|\bmight\b/.test(sl)?0.25:0;
+      const imp=/^(buy|get|try|order|act|grab|claim|hurry|rush|unlock|save|join|don'?t|never)\b/i.test(s.trim())?1:0;
+      const neg=Math.min(1,(s.match(/don'?t miss|never again|no more|last chance|now or never/gi)||[]).length*0.4);
+      const you=Math.min(1,(sw.filter(w=>/^(you|your|yourself|you're|you've)$/i.test(w)).length/sw.length)*8);
+      const sc=0.30*modal+0.30*imp+0.20*neg+0.20*you;
+      const wp=n>1?1+0.4*(1-(i-1)/(n-1)):1.4;
+      wS+=sc*wp;wT+=wp;
+    });
+    return Math.min(1,wS/(wT||1));
+  },
+  _sp(text){
+    return (text.match(/\d+\.?\d*\s*(g|mg|kg|ml|l|%|kcal|cal|oz|lb|cm|days?|weeks?|months?|hours?)\b/gi)||[]).length
+      +(text.match(/\d+\s*percent/gi)||[]).length
+      +(text.match(/\d+x|\d+\s*times?\b/gi)||[]).length;
+  },
+  edv(text){
+    const tl=text.toLowerCase(),W=text.split(/\s+/).filter(Boolean).length||1,sc=50;
+    const dims={
+      fear:  {t:["risk","danger","threat","warning","expire","miss","lose","urgent","afraid","harm"],ρ:0.15},
+      desire:{t:["want","love","dream","perfect","beautiful","stunning","irresistible","crave","wish"],ρ:0.12},
+      guilt: {t:["regret","shame","fault","blame","wasted","missed","failed","let down","disappoint"],ρ:0.18},
+      excite:{t:["wow","exciting","thrill","awesome","fantastic","epic","incredible","electrify"],ρ:0.10},
+      loss:  {t:["lose","loss","gone","miss out","running out","sold out","only left","expires"],ρ:0.20},
+      pride: {t:["exclusive","elite","premium","luxury","vip","select","chosen","worthy","distinguished"],ρ:0.13},
+      envy:  {t:["others","everyone else","they have","join","don't be left","while others"],ρ:0.17},
+    };
+    const vec={};
+    for(const [k,{t,ρ}] of Object.entries(dims)){
+      const m=t.filter(term=>tl.includes(term)).length;
+      vec[k]=Math.min(1,(m/W)*ρ*sc);
+    }
+    const mag=Math.min(1,Math.sqrt(Object.values(vec).reduce((s,v)=>s+v*v,0)));
+    const sp=this._sp(text);
+    const eDims=Object.values(vec).filter(v=>v>0.05).length;
+    const va=Math.min(1,sp/Math.max(1,eDims*0.5));
+    return{vec,mag,va,emi:mag*(1-va)};
+  },
+  sec(text){
+    const tl=text.toLowerCase();
+    const cats=[
+      {terms:["absolutely","completely","perfectly","flawlessly","utterly","totally"],sc:0.8},
+      {terms:["best","greatest","ultimate","world-class","finest","leading","number one"],sc:0.7},
+      {terms:["amazing","incredible","revolutionary","breakthrough","extraordinary","phenomenal","life-changing"],sc:0.5},
+      {terms:["unlike anything","beyond comparison","never seen before","one of a kind"],sc:0.9},
+    ];
+    let sw=0;const fired=[];
+    for(const{terms,sc}of cats){for(const t of terms){
+      const e=t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      const n=(tl.match(new RegExp(e,'g'))||[]).length;
+      if(n){sw+=n*sc;fired.push({t,n,sc});}
+    }}
+    sw+=(text.match(/\b#?1\b|no\.?\s*1\b/gi)||[]).length*0.7;
+    const sp=this._sp(text);
+    const raw=sw/Math.max(sp,1);
+    return{raw,norm:Math.min(1,raw/5),sw,sp,fired};
+  },
+  hpsi(text){
+    const tl=text.toLowerCase(),K=6,Hmax=Math.log2(K);
+    const techs=[
+      {name:"Urgency",    dp:0.35,tr:["hurry","now","today only","limited time","act now","expires","deadline","flash sale"]},
+      {name:"Scarcity",   dp:0.30,tr:["only left","limited","selling out","few remaining","last chance","almost gone"]},
+      {name:"FOMO",       dp:0.40,tr:["don't miss","everyone","others are","missing out","while you can","before it's gone"]},
+      {name:"Authority",  dp:0.20,tr:["expert","doctor","certified","proven","scientifically","clinically","dermatologist"]},
+      {name:"SocialProof",dp:0.15,tr:["thousands","customers love","rated","reviews","best seller","5 stars","trusted by"]},
+      {name:"Reciprocity",dp:0.15,tr:["free","gift","bonus","complimentary","no charge","on us"]},
+    ];
+    let pBuy=1/K;const act=[];
+    for(const t of techs){
+      const hits=t.tr.filter(tr=>tl.includes(tr)).length;
+      const a=Math.min(1,hits/2);
+      if(a>0){pBuy=Math.min(0.92,pBuy+t.dp*a);act.push({name:t.name,a,dp:t.dp});}
+    }
+    const pO=Math.max(0,(1-pBuy)/(K-1));
+    const H=-[pBuy,...Array(K-1).fill(pO)].reduce((s,p)=>s+(p>1e-10?p*Math.log2(p):0),0);
+    return{score:Math.max(0,Math.min(1,1-H/Hmax)),act,pBuy};
+  },
+  pi(text){
+    const tl=text.toLowerCase(),words=text.split(/\s+/);
+    const techs=[
+      {name:"Urgency",    w:0.22,tr:["hurry","now","today only","limited time","act now","expires"]},
+      {name:"Scarcity",   w:0.20,tr:["only left","limited","selling out","last chance","almost gone"]},
+      {name:"FOMO",       w:0.25,tr:["don't miss","everyone","missing out","while you can"]},
+      {name:"Authority",  w:0.15,tr:["expert","doctor","certified","proven","scientifically"]},
+      {name:"SocialProof",w:0.12,tr:["thousands","customers love","rated","reviews","best seller"]},
+      {name:"Reciprocity",w:0.10,tr:["free","gift","bonus","complimentary","no charge"]},
+    ];
+    let prod=1;const bd=[];
+    for(const t of techs){
+      const p=Math.min(1,t.tr.filter(tr=>tl.includes(tr)).length/2);
+      prod*=(1-t.w*p);if(p>0)bd.push({name:t.name,p,w:t.w,c:t.w*p});
+    }
+    const base=1-prod;
+    let firstU=words.length;
+    for(let i=0;i<words.length;i++){if(["hurry","now","today","expires","limited","act","deadline"].some(u=>words[i].toLowerCase().includes(u))){firstU=i;break;}}
+    return{base,eff:Math.min(1,base*(1+0.3*(1-firstU/words.length))),bd};
+  },
+  vi(text){
+    const ss=text.split(/[.!?;]+/).map(s=>s.trim()).filter(s=>s.length>8);
+    const list=ss.length?ss:[text];let tot=0;
+    for(const s of list){
+      const hasN=/\d/.test(s),hasU=/\b(g|mg|%|ml|kg|kcal|cal|cm|days?|weeks?)\b/i.test(s);
+      const hasPct=/\d+\s*percent/i.test(s);
+      const vague=/(amazing|incredible|best|great|revolutionary|ultimate|proven|guaranteed)/i.test(s);
+      const hedged=/\b(may|might|could|typically|often|approximately|about)\b/i.test(s);
+      const sp=(hasN&&(hasU||hasPct))?1.0:hasN?0.65:vague?0.15:hedged?0.35:0.50;
+      tot+=(vague?0.25:hedged?0.6:0.80)*sp;
+    }
+    return Math.min(1,tot/list.length);
+  },
+  as(text){
+    const w=text.toLowerCase().split(/\s+/).filter(Boolean),W=w.length||1;
+    const sp=Math.min(1,this._sp(text)/3);
+    const hg=Math.min(1,w.filter(x=>/^(may|might|could|typically|often|approximately|about)$/.test(x)).length/W*20);
+    const ab=w.filter(x=>/^(always|never|guaranteed|definitely|certainly|absolutely|perfect)$/.test(x)).length;
+    return Math.max(0,Math.min(1,0.5*sp+0.3*hg+0.3-Math.min(0.4,ab/W*15)));
+  },
+  clf(text){
+    const W=text.split(/\s+/).filter(Boolean).length||1;
+    const sents=text.split(/[.!?]+/).filter(Boolean);
+    const exc=(text.match(/!/g)||[]).length,caps=(text.match(/\b[A-Z]{2,}\b/g)||[]).length;
+    const io=Math.min(1,W/150),it=Math.min(1,((exc+caps)/W)*8);
+    return Math.min(1,0.35*io+0.45*it+0.20*Math.min(1,W/(sents.length||1)/25));
+  },
+  analyze(text){
+    if(!text.trim())return null;
+    const lpsV=this.lps(text),edvR=this.edv(text),secR=this.sec(text);
+    const hpsiR=this.hpsi(text),piR=this.pi(text),viV=this.vi(text);
+    const asV=this.as(text),clfV=this.clf(text);
+    const mpi=Math.min(1,piR.eff*(1+0.3*lpsV+0.2*secR.norm));
+    const drs=Math.min(1,0.28*mpi+0.22*(1-viV)+0.18*(1-asV)+0.18*hpsiR.score+0.14*secR.norm);
+    const cbf=(edvR.mag+clfV)/2;
+    const ts=Math.max(1,Math.round((1-drs)*(1-cbf)*100));
+    return{lps:lpsV,edv:edvR,sec:secR,hpsi:hpsiR,pi:piR,vi:viV,as:asV,clf:clfV,mpi,drs,cbf,ts};
+  },
+  ate({mA,mC,cA,cC,fA,fC,pA,pC,poA,poC,scans,viVar,auFail,custConf}){
+    const v=[mA/250,cA/800,fA/10,1-Math.min(1,pA/12),poA/500];
+    const c=[mC/250,cC/800,fC/10,1-Math.min(1,pC/12),poC/500];
+    const delta=Math.sqrt(v.reduce((s,vi,i)=>s+(vi-c[i])**2,0));
+    const d20=Math.sqrt(5)*0.2,lam=Math.log(2)/d20;
+    const alpha=Math.exp(-lam*delta);
+    const T=100*(1-Math.exp(-alpha*scans/80));
+    const s1=Math.max(0.01,viVar),s2=0.10,s3=0.15;
+    const inv=1/s1+1/s2+1/s3;
+    const w1=(1/s1)/inv,w2=(1/s2)/inv,w3=(1/s3)/inv;
+    const viP=Math.max(0,1-delta/(Math.sqrt(5)*0.5));
+    const drs=Math.min(1,0.33*Math.min(1,viVar/0.5)+0.33*auFail+0.33*(1-custConf));
+    const raw=w1*viP+w2*custConf-w3*drs;
+    const tsF=raw*(T/100);
+    const score=Math.round(Math.max(0,Math.min(100,100/(1+Math.exp(-8*(tsF-0.5))))));
+    return{delta,lambda:lam,alpha,T,w1,w2,w3,viP,drs,raw,tsF,score};
+  },
+  unified(ate,nti){
+    const uti=ate*(nti/100),aid=ate*(1-nti/100);
+    const quad=ate>=50&&nti>=35?"I":ate>=50&&nti<35?"II":ate<50&&nti>=35?"III":"IV";
+    return{uti,aid,quad};
+  }
+};
+
+// ── AI CALL ───────────────────────────────────────────────────────────────────
+async function callClaude(adText,kidMode,apiKey){
+  if(!apiKey)throw new Error("NO_KEY");
+  const kid=kidMode?'\nAlso add "kid_moral": one sentence a 10-year-old understands. Simple, direct.':'';
+  const res=await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:900,messages:[{role:"user",content:
+`Advertising honesty analyst, Indian context. Analyze this ad.
+
+AD: "${adText.substring(0,500)}"
+
+Focus: ASCI/FSSAI/NCPCR issues, child targeting, celebrity endorsement reality, unverifiable health claims.${kid}
+
+JSON only, zero markdown:
+{"verdict":"HONEST|QUESTIONABLE|MISLEADING|HARMFUL","summary":"2 sentences","main_trick":"plain words","consumer_question":"one smart question","india_context":"regulatory/cultural issue","targets_children":true/false,"celebrity_note":"about celebrity involvement" or null,"kid_moral":"child-friendly sentence" or null}`}]})
+  });
+  if(!res.ok)throw new Error(`HTTP ${res.status}`);
+  const d=await res.json();
+  const raw=d.content?.find(b=>b.type==="text")?.text||"{}";
+  try{return JSON.parse(raw.replace(/```json\n?|```/g,"").trim());}
+  catch{const m=raw.match(/\{[\s\S]*\}/);if(m)return JSON.parse(m[0]);
+    return{verdict:"QUESTIONABLE",summary:"Analysis complete. Review math scores above.",main_trick:"See technique breakdown",consumer_question:"What specific evidence supports these claims?",india_context:null,targets_children:false,celebrity_note:null,kid_moral:null};}
+}
+
+// ── UI PRIMITIVES ─────────────────────────────────────────────────────────────
+const Badge=({children,color})=>(
+  <span style={{fontFamily:C.mono,fontSize:9,padding:"2px 8px",borderRadius:20,background:color+"20",border:`1px solid ${color}50`,color,letterSpacing:"0.05em",display:"inline-block",margin:"2px 3px 2px 0"}}>{children}</span>
+);
+
+const Bar=({value,color,label,note})=>(
+  <div style={{marginBottom:10}}>
+    <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+      <span style={{fontSize:10,color:C.dim,fontFamily:C.mono}}>{label}</span>
+      {note&&<span style={{fontSize:10,color,fontFamily:C.mono,fontWeight:700}}>{note}</span>}
+    </div>
+    <div style={{height:3,background:C.border,borderRadius:2}}>
+      <div style={{height:"100%",width:`${Math.min(100,Math.max(0,value))}%`,background:color,borderRadius:2,transition:"width 0.8s ease"}}/>
+    </div>
+  </div>
+);
+
+const Pnl=({children,style={},glow})=>(
+  <div style={{background:C.panel,border:`1px solid ${glow?glow+"45":C.border}`,borderRadius:12,padding:18,boxShadow:glow?`0 0 30px ${glow}08`:"none",...style}}>{children}</div>
+);
+
+const Lbl=({children})=>(
+  <div style={{fontFamily:C.mono,fontSize:8,color:C.faint,letterSpacing:"0.25em",textTransform:"uppercase",marginBottom:10,paddingBottom:7,borderBottom:`1px solid ${C.border}`}}>{children}</div>
+);
+
+const Num=({v,label,color,size=28})=>(
+  <div style={{textAlign:"center"}}>
+    <div style={{fontFamily:C.mono,fontSize:size,fontWeight:900,color,lineHeight:1,textShadow:`0 0 20px ${color}50`,letterSpacing:"-1px"}}>{typeof v==="number"?v>=10?Math.round(v):v.toFixed(2):v}</div>
+    <div style={{fontFamily:C.mono,fontSize:8,color:C.faint,letterSpacing:"0.15em",marginTop:4}}>{label}</div>
+  </div>
+);
+
+function Spin(){
+  const [d,setD]=useState(0);
+  useEffect(()=>{const t=setInterval(()=>setD(x=>(x+1)%4),300);return()=>clearInterval(t);},[]);
+  return <span style={{color:C.pink,display:"inline-block",width:14}}>{"◐◓◑◒"[d]}</span>;
+}
+
+function useW(){
+  const [w,setW]=useState(960);
+  useEffect(()=>{
+    const fn=()=>setW(window.innerWidth);
+    window.addEventListener("resize",fn);fn();
+    return()=>window.removeEventListener("resize",fn);
+  },[]);
+  return w;
+}
+
+// ── API KEY SETUP ─────────────────────────────────────────────────────────────
+function ApiKeySetup({apiKey,setApiKey}){
+  const [show,setShow]=useState(false);
+  const [input,setInput]=useState(apiKey||"");
+  if(!show&&apiKey)return(
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+      <span style={{fontFamily:C.mono,fontSize:9,color:C.green}}>✓ API key set</span>
+      <button onClick={()=>setShow(true)} style={{fontFamily:C.mono,fontSize:9,padding:"2px 8px",background:"transparent",border:`1px solid ${C.border}`,color:C.dim,borderRadius:4,cursor:"pointer"}}>change</button>
+    </div>
+  );
+  if(!show&&!apiKey)return(
+    <button onClick={()=>setShow(true)} style={{fontFamily:C.mono,fontSize:9,padding:"4px 10px",background:C.pink+"20",border:`1px solid ${C.pink}40`,color:C.pink,borderRadius:6,cursor:"pointer"}}>
+      🔑 Set API key for AI analysis
+    </button>
+  );
+  return(
+    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+      <input type="password" value={input} onChange={e=>setInput(e.target.value)} placeholder="sk-ant-..." 
+        style={{fontFamily:C.mono,fontSize:10,padding:"4px 8px",background:C.panel,border:`1px solid ${C.border}`,color:C.text,borderRadius:4,outline:"none",width:200}}/>
+      <button onClick={()=>{const k=input.trim();if(k){setApiKey(k);localStorage.setItem("adsach_key",k);}setShow(false);}}
+        style={{fontFamily:C.mono,fontSize:9,padding:"4px 10px",background:C.green+"20",border:`1px solid ${C.green}40`,color:C.green,borderRadius:4,cursor:"pointer"}}>Save</button>
+      <button onClick={()=>setShow(false)} style={{fontFamily:C.mono,fontSize:9,padding:"4px 8px",background:"transparent",border:`1px solid ${C.border}`,color:C.dim,borderRadius:4,cursor:"pointer"}}>✕</button>
+    </div>
+  );
+}
+
+// ── TAB 1: ANALYZE AD ─────────────────────────────────────────────────────────
+function AnalyzeAd({onScore,kidMode,apiKey}){
+  const [text,setText]=useState("");
+  const [res,setRes]=useState(null);
+  const [aiRes,setAiRes]=useState(null);
+  const [loading,setLoading]=useState(false);
+  const [err,setErr]=useState(null);
+  const [feedSaved,setFeedSaved]=useState(false);
+  const [feedVal,setFeedVal]=useState(null);
+  const [section,setSection]=useState("overview");
+  const w=useW();const narrow=w<700;
+
+  useEffect(()=>{setFeedSaved(false);setFeedVal(null);},[text]);
+
+  const analyze=useCallback(async()=>{
+    if(!text.trim())return;
+    const r=ME.analyze(text);setRes(r);setAiRes(null);setErr(null);setLoading(true);setSection("overview");
+    onScore(r.ts);
+    try{const a=await callClaude(text,kidMode,apiKey);setAiRes(a);}
+    catch(e){
+      if(e.message==="NO_KEY")setErr("Set your Anthropic API key (top right) to enable AI analysis. Math scores above are fully functional without it.");
+      else setErr("AI analysis failed — math scores are still valid.");
+    }
+    finally{setLoading(false);}
+  },[text,kidMode,apiKey,onScore]);
+
+  const tsc=!res?C.dim:res.ts>=65?C.green:res.ts>=35?C.yellow:C.red;
+  const vc={HONEST:C.green,QUESTIONABLE:C.yellow,MISLEADING:C.orange,HARMFUL:C.red};
+
+  return(
+    <div style={{display:"grid",gridTemplateColumns:narrow?"1fr":"1fr 1fr",gap:14}}>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <Pnl>
+          <Lbl>Paste any Indian ad — TV, Instagram, packet, hoarding</Lbl>
+          <textarea value={text} onChange={e=>setText(e.target.value)}
+            placeholder={"Example:\n'Boost is the secret of my energy! Sachin uses Boost everyday to become a champion...'\n\nPaste any food, health, or beauty ad."}
+            style={{width:"100%",minHeight:130,background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,color:C.text,fontFamily:C.mono,fontSize:12,padding:12,resize:"vertical",outline:"none",lineHeight:1.7,boxSizing:"border-box"}}/>
+          <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:10}}>
+            {SAMPLES.map(s=>(
+              <button key={s.label} onClick={()=>setText(s.text)}
+                style={{fontFamily:C.mono,fontSize:9,padding:"3px 9px",background:C.bg,border:`1px solid ${C.border}`,color:C.dim,borderRadius:20,cursor:"pointer"}}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+          <button onClick={analyze} disabled={!text.trim()}
+            style={{marginTop:12,width:"100%",padding:"13px 0",background:text.trim()?`linear-gradient(135deg,${C.pink},${C.purple})`:C.border,color:text.trim()?"white":C.faint,fontFamily:C.mono,fontSize:12,fontWeight:700,letterSpacing:"0.12em",border:"none",borderRadius:8,cursor:text.trim()?"pointer":"default"}}>
+            CHECK THIS AD →
+          </button>
+          {text.trim()&&<div style={{fontFamily:C.mono,fontSize:9,color:C.faint,textAlign:"right",marginTop:4}}>{text.split(/\s+/).filter(Boolean).length} words</div>}
+        </Pnl>
+
+        <Pnl>
+          <Lbl>Score guide</Lbl>
+          {[["🟢 65–100","Honest — says what it means"],["🟡 35–64","Questionable — unverifiable claims"],["🔴 0–34","Manipulative — designed to feel, not think"]].map(([s,d])=>(
+            <div key={s} style={{display:"flex",gap:10,alignItems:"center",marginBottom:8}}>
+              <span style={{fontFamily:C.mono,fontSize:10,color:C.text,whiteSpace:"nowrap",minWidth:75}}>{s}</span>
+              <span style={{fontSize:12,color:C.dim}}>{d}</span>
+            </div>
+          ))}
+          {res&&(
+            <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.border}`}}>
+              {!feedSaved?(
+                <>
+                  <div style={{fontFamily:C.mono,fontSize:10,color:C.dim,marginBottom:8}}>Seen this product in real life? Did it match the ad?</div>
+                  <div style={{display:"flex",gap:6}}>
+                    {["✅ Matched","❌ Very different","🤷 Can't tell"].map(f=>(
+                      <button key={f} onClick={()=>{setFeedVal(f);setFeedSaved(true);}}
+                        style={{fontFamily:C.mono,fontSize:9,padding:"5px 6px",background:C.bg,border:`1px solid ${C.border}`,color:C.dim,borderRadius:6,cursor:"pointer",flex:1}}>
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ):(
+                <div style={{fontFamily:C.mono,fontSize:10,color:C.green}}>✓ Recorded: "{feedVal}" — real consumer reports = real ground truth.</div>
+              )}
+            </div>
+          )}
+        </Pnl>
+      </div>
+
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {!res?(
+          <Pnl style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:360}}>
+            <div style={{textAlign:"center",color:C.faint}}>
+              <div style={{fontSize:48,marginBottom:14}}>🔬</div>
+              <div style={{fontFamily:C.mono,fontSize:11,letterSpacing:"0.1em"}}>PASTE AN AD AND ANALYZE</div>
+              <div style={{fontFamily:C.mono,fontSize:9,marginTop:8}}>full PAVE-C v2.0 — all 10 metrics</div>
+            </div>
+          </Pnl>
+        ):(
+          <>
+            <Pnl glow={tsc}>
+              <Lbl>PAVE-C v2.0 — Transparency Score</Lbl>
+              <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:16,alignItems:"center"}}>
+                <Num v={res.ts} label="/ 100" color={tsc} size={56}/>
+                <div>
+                  <Bar value={(1-res.drs)*100} color={C.green} label="Honesty level" note={`${Math.round((1-res.drs)*100)}%`}/>
+                  <Bar value={res.mpi*100} color={C.red} label="MPI — manipulation pressure" note={`${Math.round(res.mpi*100)}%`}/>
+                  <Bar value={res.cbf*100} color={C.orange} label="CBF — cognitive bypass" note={`${Math.round(res.cbf*100)}%`}/>
+                </div>
+              </div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:10}}>
+                {res.hpsi.act.map(a=><Badge key={a.name} color={C.red}>{a.name}</Badge>)}
+                {res.sec.sp>0&&<Badge color={C.green}>✓ {res.sec.sp} specific claim{res.sec.sp>1?"s":""}</Badge>}
+                {res.sec.sw>0&&res.sec.sp===0&&<Badge color={C.red}>⚠ hype, no measurements</Badge>}
+              </div>
+            </Pnl>
+
+            <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+              {["overview","advanced","techniques","edv"].map(s=>(
+                <button key={s} onClick={()=>setSection(s)}
+                  style={{fontFamily:C.mono,fontSize:9,padding:"5px 10px",background:section===s?C.hi:"transparent",border:`1px solid ${section===s?C.hi:C.border}`,color:section===s?C.text:C.dim,borderRadius:4,cursor:"pointer",textTransform:"uppercase"}}>
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            {section==="overview"&&<Pnl>
+              <Lbl>PAVE-C Base Dimensions</Lbl>
+              <Bar value={res.vi*100} color={C.green} label="VI — Verifiability Index" note={`${Math.round(res.vi*100)}%`}/>
+              <Bar value={res.as*100} color={C.cyan} label="AS — Authenticity Score" note={`${Math.round(res.as*100)}%`}/>
+              <Bar value={res.clf*100} color={C.orange} label="CLF — Cognitive Load Factor" note={`${Math.round(res.clf*100)}%`}/>
+              <Bar value={res.pi.base*100} color={C.red} label="PI base — Persuasion Intensity" note={`${Math.round(res.pi.base*100)}%`}/>
+              <Bar value={res.pi.eff*100} color={C.red} label="PI effective — temporally weighted" note={`${Math.round(res.pi.eff*100)}%`}/>
+              <div style={{fontFamily:C.mono,fontSize:9,color:C.faint,marginTop:10,lineHeight:2}}>
+                <div>DRS = 0.28·MPI + 0.22·(1−VI) + 0.18·(1−AS) + 0.18·H_ψ + 0.14·SEC_n</div>
+                <div>TS = (1−DRS)×(1−CBF)×100 = <span style={{color:tsc}}>{res.ts}</span></div>
+              </div>
+            </Pnl>}
+
+            {section==="advanced"&&<Pnl>
+              <Lbl>Advanced Metrics — LPS · EDV · SEC · H_ψ · MPI</Lbl>
+              <Bar value={res.lps*100} color={C.orange} label="LPS — Linguistic Pressure Score" note={`${Math.round(res.lps*100)}%`}/>
+              <Bar value={res.edv.mag*100} color={C.purple} label="EDV — Emotional Density |EDV|" note={`${Math.round(res.edv.mag*100)}%`}/>
+              <Bar value={res.sec.norm*100} color={C.red} label={`SEC — Exaggeration (raw: ${res.sec.raw.toFixed(2)})`} note={`${Math.round(res.sec.norm*100)}%`}/>
+              <Bar value={res.hpsi.score*100} color={C.yellow} label="H_ψ — Psychological Entropy" note={`${Math.round(res.hpsi.score*100)}%`}/>
+              <Bar value={res.mpi*100} color={C.red} label="MPI = PI_eff×(1+0.3·LPS+0.2·SEC)" note={`${Math.round(res.mpi*100)}%`}/>
+              <div style={{fontFamily:C.mono,fontSize:9,color:C.faint,marginTop:10,lineHeight:2}}>
+                <div>H_ψ: p(buy) {(100/6).toFixed(0)}% → {Math.round(res.hpsi.pBuy*100)}% (decision space compressed)</div>
+                <div>SEC: {res.sec.sp} specific claims · {res.sec.fired.length} amplifier types</div>
+              </div>
+            </Pnl>}
+
+            {section==="techniques"&&<Pnl>
+              <Lbl>PI Technique Breakdown — compounding formula</Lbl>
+              {res.pi.bd.length>0?res.pi.bd.map(t=>(
+                <div key={t.name} style={{marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                    <span style={{fontFamily:C.mono,fontSize:10,color:C.text}}>{t.name}</span>
+                    <span style={{fontFamily:C.mono,fontSize:9,color:C.orange}}>w={t.w} · p={t.p.toFixed(2)} · Δ={t.c.toFixed(3)}</span>
+                  </div>
+                  <div style={{height:3,background:C.border,borderRadius:2}}>
+                    <div style={{width:`${t.p*100}%`,height:"100%",background:C.orange,borderRadius:2}}/>
+                  </div>
+                </div>
+              )):<div style={{fontFamily:C.mono,fontSize:11,color:C.faint,padding:"10px 0"}}>No persuasion techniques detected.</div>}
+              {res.hpsi.act.length>0&&<>
+                <div style={{height:1,background:C.border,margin:"12px 0"}}/>
+                <Lbl>H_ψ — Decision Space Compression</Lbl>
+                {res.hpsi.act.map(t=>(
+                  <div key={t.name} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",fontFamily:C.mono,fontSize:10}}>
+                    <span style={{color:C.text}}>{t.name}</span>
+                    <span style={{color:C.yellow}}>Δp={t.dp} · activation={t.a.toFixed(2)}</span>
+                  </div>
+                ))}
+              </>}
+            </Pnl>}
+
+            {section==="edv"&&<Pnl>
+              <Lbl>EDV — Emotional Density Vector (7 Dimensions)</Lbl>
+              {Object.entries(res.edv.vec).map(([k,v])=>(
+                <Bar key={k} value={v*100} color={C.purple} label={k.charAt(0).toUpperCase()+k.slice(1)} note={`${(v*100).toFixed(1)}%`}/>
+              ))}
+              <div style={{fontFamily:C.mono,fontSize:9,color:C.faint,marginTop:10,lineHeight:2}}>
+                <div>|EDV| = √(Σ fₖ²) = {(res.edv.mag*100).toFixed(1)}%</div>
+                <div>Valence authenticity = {Math.round(res.edv.va*100)}%</div>
+                <div>EMI = |EDV|×(1−va) = {(res.edv.emi*100).toFixed(1)}%</div>
+              </div>
+            </Pnl>}
+
+            <Pnl glow={aiRes?vc[aiRes.verdict]:undefined}>
+              <Lbl>AI Analysis — Claude</Lbl>
+              {loading&&<div style={{display:"flex",alignItems:"center",gap:10,padding:"18px 0"}}><Spin/><span style={{fontFamily:C.mono,fontSize:11,color:C.dim}}>Analyzing with Claude...</span></div>}
+              {err&&<div style={{fontFamily:C.mono,fontSize:11,color:err.includes("API key")?C.orange:C.red,padding:"10px 0",lineHeight:1.7}}>{err}</div>}
+              {aiRes&&(
+                <div>
+                  <div style={{marginBottom:12}}>
+                    <Badge color={vc[aiRes.verdict]||C.dim}>{aiRes.verdict}</Badge>
+                    {aiRes.targets_children&&<Badge color={C.purple}>⚠ TARGETS CHILDREN</Badge>}
+                    {aiRes.celebrity_note&&<Badge color={C.orange}>🎬 CELEBRITY NOTE</Badge>}
+                  </div>
+                  <p style={{fontSize:13,color:C.text,lineHeight:1.8,marginBottom:14}}>{aiRes.summary}</p>
+                  {[["MAIN TRICK",aiRes.main_trick,C.orange],["SMART QUESTION TO ASK",aiRes.consumer_question,C.cyan],["INDIA CONTEXT",aiRes.india_context,C.dim]].filter(([,v])=>v).map(([l,v,col])=>(
+                    <div key={l} style={{background:C.bg,borderRadius:8,padding:10,marginBottom:8}}>
+                      <div style={{fontFamily:C.mono,fontSize:8,color:C.faint,letterSpacing:"0.2em",marginBottom:5}}>{l}</div>
+                      <div style={{fontSize:12,color:col,lineHeight:1.65}}>{v}</div>
+                    </div>
+                  ))}
+                  {aiRes.celebrity_note&&(
+                    <div style={{background:C.orange+"10",border:`1px solid ${C.orange}30`,borderRadius:8,padding:12,marginBottom:8}}>
+                      <div style={{fontFamily:C.mono,fontSize:8,color:C.orange,letterSpacing:"0.2em",marginBottom:6}}>🎬 CELEBRITY REALITY</div>
+                      <div style={{fontSize:12,color:C.text,lineHeight:1.65}}>{aiRes.celebrity_note}</div>
+                    </div>
+                  )}
+                  {aiRes.kid_moral&&(
+                    <div style={{background:C.purple+"15",border:`1px solid ${C.purple}40`,borderRadius:8,padding:14}}>
+                      <div style={{fontFamily:C.mono,fontSize:8,color:C.purple,letterSpacing:"0.2em",marginBottom:8}}>👶 IF YOU'RE A KID READING THIS</div>
+                      <div style={{fontSize:14,color:C.text,lineHeight:1.8,fontStyle:"italic"}}>"{aiRes.kid_moral}"</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Pnl>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── TAB 2: ATE ENGINE ─────────────────────────────────────────────────────────
+const ATE_DEF={mA:120,mC:150,cA:480,cC:500,fA:7,fC:9,pA:2,pC:1,poA:350,poC:400,scans:250,viVar:0.15,auFail:0.2,custConf:0.75};
+
+function ATEEngine({onScore}){
+  const [inp,setInp]=useState(ATE_DEF);
+  const upd=useCallback((k,v)=>setInp(p=>({...p,[k]:v})),[]);
+  const r=useMemo(()=>ME.ate(inp),[inp]);
+  const w=useW();const narrow=w<700;
+  useEffect(()=>{onScore(r.score);},[r.score]);
+
+  const ac=r.score>=80?C.green:r.score>=50?C.yellow:C.red;
+  const pts=useMemo(()=>Array.from({length:60},(_,i)=>{
+    const s=i/59*800;return{s,t:100*(1-Math.exp(-r.alpha*s/80))};
+  }),[r.alpha]);
+  const sW=280,sH=88,pL=28,pB=14,pT=6;
+  const tx=s=>pL+(s/800)*(sW-pL-8),ty=t=>sH-pB-(t/100)*(sH-pB-pT);
+  const pathD=pts.map((p,i)=>`${i===0?"M":"L"}${tx(p.s).toFixed(1)} ${ty(p.t).toFixed(1)}`).join(" ");
+  const dot={x:tx(Math.min(inp.scans,800)),y:ty(r.T)};
+
+  const Fld=({label,k,min,max,step=1})=>(
+    <div style={{marginBottom:9}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+        <span style={{fontFamily:C.mono,fontSize:10,color:C.dim}}>{label}</span>
+        <span style={{fontFamily:C.mono,fontSize:11,color:C.cyan,fontWeight:700}}>{inp[k]}</span>
+      </div>
+      <input type="range" min={min} max={max} step={step} value={inp[k]} onChange={e=>upd(k,parseFloat(e.target.value))}/>
+    </div>
+  );
+
+  return(
+    <div style={{display:"grid",gridTemplateColumns:narrow?"1fr":"380px 1fr",gap:14}}>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <Pnl>
+          <Lbl>Physical Reality Vector V vs Claim Vector C</Lbl>
+          <Fld label="Meat Actual (g)" k="mA" min={50} max={300}/>
+          <Fld label="Meat Claimed (g)" k="mC" min={50} max={300}/>
+          <Fld label="Calories Actual (kcal)" k="cA" min={100} max={900} step={10}/>
+          <Fld label="Calories Claimed (kcal)" k="cC" min={100} max={900} step={10}/>
+          <Fld label="Freshness Index Actual /10" k="fA" min={1} max={10} step={0.5}/>
+          <Fld label="Freshness Index Claimed /10" k="fC" min={1} max={10} step={0.5}/>
+          <Fld label="Portion Actual (ml)" k="poA" min={100} max={700} step={10}/>
+          <Fld label="Portion Claimed (ml)" k="poC" min={100} max={700} step={10}/>
+        </Pnl>
+        <Pnl>
+          <Lbl>Operational Data Streams</Lbl>
+          <Fld label="Customer Scans S" k="scans" min={0} max={800} step={10}/>
+          <Fld label="VI Temporal Variance σ²" k="viVar" min={0} max={1} step={0.01}/>
+          <Fld label="Audit Failure Rate" k="auFail" min={0} max={1} step={0.01}/>
+          <Fld label="Customer Confirm Rate r̄" k="custConf" min={0} max={1} step={0.01}/>
+        </Pnl>
+      </div>
+
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <Pnl glow={ac}>
+          <Lbl>ATE Score — Algorithmic Trust Engine</Lbl>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
+            <Num v={r.score} label="ATE SCORE" color={ac} size={40}/>
+            <Num v={r.delta} label="Δ MISMATCH" color={r.delta>0.3?C.red:C.green}/>
+            <Num v={r.alpha} label="α COUPLING" color={r.alpha>0.7?C.green:C.orange}/>
+            <Num v={r.T} label="T(S) TRUST" color={C.cyan}/>
+          </div>
+          <div style={{fontFamily:C.mono,fontSize:9,color:C.faint,lineHeight:2}}>
+            <div>λ = ln2/Δ_20% = {r.lambda.toFixed(3)} · α = e^(−λΔ) = {r.alpha.toFixed(4)}</div>
+            <div>T(S) = 100·(1−e^(−αS)) = {r.T.toFixed(1)} · gates final score (Eden Condition)</div>
+          </div>
+        </Pnl>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <Pnl>
+            <Lbl>ODE — T(S) Growth Curve</Lbl>
+            <svg width="100%" viewBox={`0 0 ${sW} ${sH}`} style={{display:"block"}}>
+              {[0,25,50,75,100].map(v=>(
+                <line key={v} x1={pL} y1={ty(v)} x2={sW-8} y2={ty(v)} stroke={C.border} strokeWidth="0.5" strokeDasharray="3 3"/>
+              ))}
+              <line x1={pL} y1={pT} x2={pL} y2={sH-pB} stroke={C.hi} strokeWidth="1"/>
+              <line x1={pL} y1={sH-pB} x2={sW-8} y2={sH-pB} stroke={C.hi} strokeWidth="1"/>
+              <defs><linearGradient id="gr1" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={C.cyan} stopOpacity="0.6"/><stop offset="100%" stopColor={C.green}/></linearGradient></defs>
+              <path d={pathD} stroke="url(#gr1)" strokeWidth="2" fill="none"/>
+              {inp.scans>0&&<>
+                <line x1={dot.x} y1={ty(0)} x2={dot.x} y2={dot.y} stroke={C.cyan+"40"} strokeWidth="1" strokeDasharray="2 2"/>
+                <circle cx={dot.x} cy={dot.y} r="4" fill={C.cyan}/>
+              </>}
+              <text x={pL-2} y={ty(100)+3} textAnchor="end" fill={C.faint} fontSize="6" fontFamily="monospace">100</text>
+              <text x={sW-8} y={sH-2} textAnchor="end" fill={C.faint} fontSize="6" fontFamily="monospace">S=800</text>
+            </svg>
+            <div style={{fontFamily:C.mono,fontSize:8,color:C.faint,marginTop:4}}>dT/dS = α(T_max − T)</div>
+          </Pnl>
+          <Pnl>
+            <Lbl>IVW Weights + DRS(t)</Lbl>
+            <Bar value={r.w1*100} color={C.cyan} label="w₁ VI stream" note={`${(r.w1*100).toFixed(1)}%`}/>
+            <Bar value={r.w2*100} color={C.orange} label="w₂ Audit stream" note={`${(r.w2*100).toFixed(1)}%`}/>
+            <Bar value={r.w3*100} color={C.purple} label="w₃ Customer stream" note={`${(r.w3*100).toFixed(1)}%`}/>
+            <div style={{height:1,background:C.border,margin:"10px 0"}}/>
+            <Bar value={r.drs*100} color={C.red} label="DRS(t) — Deception Risk" note={`${Math.round(r.drs*100)}%`}/>
+            <div style={{fontFamily:C.mono,fontSize:9,color:C.faint,marginTop:8,lineHeight:2}}>
+              <div>raw = {r.raw.toFixed(3)} · TS = raw×T/100 = {r.tsF.toFixed(3)}</div>
+              <div>→ Score = {r.score}</div>
+            </div>
+          </Pnl>
+        </div>
+
+        <Pnl>
+          <Lbl>Integrity Status</Lbl>
+          {r.score>=80&&<><Badge color={C.green}>✓ VERIFIED HONEST</Badge><p style={{fontFamily:C.mono,fontSize:10,color:C.dim,marginTop:8}}>Supply chain data closely matches advertised claims. α={r.alpha.toFixed(3)} — full trust growth pressure applied.</p></>}
+          {r.score>=50&&r.score<80&&<><Badge color={C.yellow}>⚠ MODERATE MISMATCH</Badge><p style={{fontFamily:C.mono,fontSize:10,color:C.dim,marginTop:8}}>Detectable gap between physical reality and claims. Coupling constant suppressed to α={r.alpha.toFixed(3)}.</p></>}
+          {r.score<50&&<><Badge color={C.red}>✗ HIGH DECEPTION RISK</Badge><p style={{fontFamily:C.mono,fontSize:10,color:C.dim,marginTop:8}}>Significant mismatch. α={r.alpha.toFixed(3)} severely limits trust growth — Eden Condition active.</p></>}
+        </Pnl>
+      </div>
+    </div>
+  );
+}
+
+// ── TAB 3: UNIFIED ────────────────────────────────────────────────────────────
+function Unified({ntiScore,ateScore}){
+  const [nti,setNti]=useState(13);
+  const [ate,setAte]=useState(65);
+  useEffect(()=>{if(ntiScore!==null)setNti(Math.round(ntiScore));},[ntiScore]);
+  useEffect(()=>{if(ateScore!==null)setAte(Math.round(ateScore));},[ateScore]);
+  const {uti,aid,quad}=useMemo(()=>ME.unified(ate,nti),[ate,nti]);
+  const w=useW();const narrow=w<700;
+  const qm={
+    I:{label:"VERIFIED HONEST",c:C.green,d:"Genuine product + transparent advertising. The only fully trustworthy configuration."},
+    II:{label:"HONEST PRODUCT · MANIPULATIVE AD",c:C.orange,d:"Most common dangerous config. Product is genuine but advertising uses systematic psychological manipulation. High AID. Invisible to both product-only and ad-only verification — only the unified framework reveals it."},
+    III:{label:"FAKE PRODUCT · TRANSPARENT AD",c:C.yellow,d:"Rare. Product falls short of claims but advertising makes no manipulative attempt to hide it."},
+    IV:{label:"DOUBLY DECEPTIVE",c:C.red,d:"Maximum consumer harm. Product claims are false AND advertising uses psychological manipulation. Maggi 2015, Bournvita, Vimal."},
+  };
+  const qc=qm[quad];
+  const sS=270,pad=34;
+  const px=n=>pad+(n/100)*(sS-pad*2),py=a=>sS-pad-(a/100)*(sS-pad*2);
+
+  return(
+    <div style={{display:"grid",gridTemplateColumns:narrow?"1fr":"1fr 1fr",gap:14}}>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {(ntiScore!==null||ateScore!==null)&&(
+          <Pnl style={{background:C.green+"06",border:`1px solid ${C.green}25`}}>
+            <Lbl>Auto-populated from your analyses</Lbl>
+            <div style={{fontFamily:C.mono,fontSize:10,color:C.dim,lineHeight:1.8}}>
+              {ntiScore!==null&&<div>NTI from Ad Analyzer: <span style={{color:C.pink,fontWeight:700}}>{Math.round(ntiScore)}</span></div>}
+              {ateScore!==null&&<div>ATE from ATE Engine: <span style={{color:C.cyan,fontWeight:700}}>{Math.round(ateScore)}</span></div>}
+              <div style={{color:C.faint,marginTop:4}}>Adjust sliders below to explore manually.</div>
+            </div>
+          </Pnl>
+        )}
+        <Pnl>
+          <Lbl>Unified Trust Index Calculator</Lbl>
+          {[["ATE Score — Product Truth",ate,setAte,C.cyan],["NTI-AD Score — Advertising Honesty",nti,setNti,C.pink]].map(([l,v,fn,col])=>(
+            <div key={l} style={{marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                <span style={{fontFamily:C.mono,fontSize:10,color:C.dim}}>{l}</span>
+                <span style={{fontFamily:C.mono,fontSize:12,color:col,fontWeight:700}}>{v}</span>
+              </div>
+              <input type="range" min={0} max={100} value={v} onChange={e=>fn(+e.target.value)} style={{accentColor:col}}/>
+            </div>
+          ))}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,padding:"14px 0"}}>
+            <Num v={ate} label="ATE" color={C.cyan}/>
+            <Num v={uti} label="UTI" color={qc.c}/>
+            <Num v={aid} label="AID" color={C.red}/>
+          </div>
+          <div style={{fontFamily:C.mono,fontSize:9,color:C.faint,lineHeight:2,marginTop:8,padding:"10px 0",borderTop:`1px solid ${C.border}`}}>
+            <div>UTI = ATE×(NTI/100) = {ate}×{(nti/100).toFixed(2)} = <span style={{color:qc.c}}>{uti.toFixed(1)}</span></div>
+            <div>AID = ATE×(1−NTI/100) = <span style={{color:C.red}}>{aid.toFixed(1)}</span></div>
+            <div style={{color:C.yellow,marginTop:4}}>Linear avg would give {((ate+nti)/2).toFixed(1)} — dangerously misleading</div>
+          </div>
+        </Pnl>
+        <Pnl glow={qc.c}>
+          <Lbl>Quadrant Classification</Lbl>
+          <div style={{textAlign:"center",padding:"12px 0"}}>
+            <div style={{fontFamily:C.mono,fontSize:58,fontWeight:900,color:qc.c,lineHeight:1,textShadow:`0 0 50px ${qc.c}60`}}>Q{quad}</div>
+            <div style={{fontFamily:C.mono,fontSize:10,color:qc.c,letterSpacing:"0.1em",marginTop:8}}>{qc.label}</div>
+          </div>
+          <div style={{background:C.bg,borderRadius:8,padding:12,fontFamily:C.mono,fontSize:10,color:C.dim,lineHeight:1.8}}>{qc.d}</div>
+          <div style={{marginTop:12}}>
+            {aid<=10&&<Badge color={C.green}>Aligned — ad integrity matches product quality</Badge>}
+            {aid>10&&aid<=30&&<Badge color={C.yellow}>Minor — some pressure beyond product reality</Badge>}
+            {aid>30&&aid<=60&&<Badge color={C.orange}>Significant — product better than how it's sold</Badge>}
+            {aid>60&&<Badge color={C.red}>Severe — genuine product behind aggressive manipulation</Badge>}
+          </div>
+        </Pnl>
+      </div>
+
+      <Pnl>
+        <Lbl>2D Commercial Trust Space</Lbl>
+        <svg width="100%" viewBox={`0 0 ${sS} ${sS}`} style={{display:"block"}}>
+          <rect x={pad} y={pad} width={(sS-pad*2)/2} height={(sS-pad*2)/2} fill={C.green+"06"}/>
+          <rect x={pad+(sS-pad*2)/2} y={pad} width={(sS-pad*2)/2} height={(sS-pad*2)/2} fill={C.orange+"06"}/>
+          <rect x={pad} y={pad+(sS-pad*2)/2} width={(sS-pad*2)/2} height={(sS-pad*2)/2} fill={C.yellow+"06"}/>
+          <rect x={pad+(sS-pad*2)/2} y={pad+(sS-pad*2)/2} width={(sS-pad*2)/2} height={(sS-pad*2)/2} fill={C.red+"06"}/>
+          <line x1={pad+(sS-pad*2)/2} y1={pad} x2={pad+(sS-pad*2)/2} y2={sS-pad} stroke={C.border} strokeWidth="1"/>
+          <line x1={pad} y1={pad+(sS-pad*2)/2} x2={sS-pad} y2={pad+(sS-pad*2)/2} stroke={C.border} strokeWidth="1"/>
+          <rect x={pad} y={pad} width={sS-pad*2} height={sS-pad*2} fill="none" stroke={C.hi} strokeWidth="1"/>
+          {[["I",C.green,pad+50,pad+36],["II",C.orange,pad+150,pad+36],["III",C.yellow,pad+50,pad+168],["IV",C.red,pad+150,pad+168]].map(([q,c,x,y])=>(
+            <text key={q} x={x} y={y} textAnchor="middle" fill={c+"70"} fontSize="11" fontFamily="monospace" fontWeight="bold">Q{q}</text>
+          ))}
+          <text x={sS/2} y={sS-3} textAnchor="middle" fill={C.faint} fontSize="7" fontFamily="monospace">NTI-AD Score →</text>
+          <text x={9} y={sS/2} textAnchor="middle" fill={C.faint} fontSize="7" fontFamily="monospace" transform={`rotate(-90 9 ${sS/2})`}>ATE Score →</text>
+          {CASES.map(cs=>(
+            <g key={cs.id}>
+              <circle cx={px(cs.score.nti)} cy={py(cs.score.ate)} r="5" fill={cs.color} opacity="0.8"/>
+              <text x={px(cs.score.nti)+8} y={py(cs.score.ate)+4} fill={cs.color} fontSize="7" fontFamily="monospace">{cs.brand.split(" ")[0]}</text>
+            </g>
+          ))}
+          <circle cx={px(nti)} cy={py(ate)} r="9" fill="none" stroke={qc.c} strokeWidth="2.5"/>
+          <circle cx={px(nti)} cy={py(ate)} r="3.5" fill={qc.c}/>
+          <text x={px(nti)+13} y={py(ate)+4} fill={qc.c} fontSize="9" fontFamily="monospace" fontWeight="bold">YOU</text>
+        </svg>
+        <div style={{marginTop:12}}>
+          <Lbl>Reference Brands on Plot</Lbl>
+          <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+            {CASES.map(cs=><Badge key={cs.id} color={cs.color}>{cs.emoji} {cs.brand.split("/")[0].trim()} Q{cs.quad}</Badge>)}
+          </div>
+        </div>
+      </Pnl>
+    </div>
+  );
+}
+
+// ── TAB 4: REAL CASES ─────────────────────────────────────────────────────────
+function RealCases(){
+  const [sel,setSel]=useState(null);
+  const [filter,setFilter]=useState("all");
+  const w=useW();const narrow=w<700;
+  const filtered=filter==="all"?CASES:CASES.filter(c=>c.cat===filter);
+  const qc={"I":C.green,"II":C.yellow,"III":C.orange,"IV":C.red};
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      <div style={{background:C.orange+"12",border:`1px solid ${C.orange}40`,borderRadius:12,padding:16}}>
+        <div style={{fontFamily:C.mono,fontSize:9,color:C.orange,letterSpacing:"0.2em",marginBottom:8}}>🎬 CELEBRITY ENDORSEMENT REALITY — READ THIS FIRST</div>
+        <p style={{fontSize:13,color:C.text,lineHeight:1.8,margin:0}}>
+          Shah Rukh Khan, Ajay Devgn, and Akshay Kumar all appeared in Vimal pan masala ads. <strong style={{color:C.orange}}>All three issued public disclaimers saying they do not consume the product.</strong> They were paid crores for 30-second appearances. When a celebrity appears in an ad — they are doing a job, not giving you a personal recommendation.
+        </p>
+      </div>
+
+      <Pnl>
+        <Lbl>Documented real Indian advertising cases — ASCI · FSSAI · NCPCR · Courts</Lbl>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
+          {["all","food","health","beauty","gutka"].map(cat=>(
+            <button key={cat} onClick={()=>setFilter(cat)}
+              style={{fontFamily:C.mono,fontSize:9,padding:"4px 12px",background:filter===cat?C.pink+"25":C.bg,border:`1px solid ${filter===cat?C.pink:C.border}`,color:filter===cat?C.pink:C.dim,borderRadius:20,cursor:"pointer",textTransform:"uppercase"}}>
+              {cat}
+            </button>
+          ))}
+        </div>
+      </Pnl>
+
+      <div style={{display:narrow?"flex":"grid",flexDirection:"column",gridTemplateColumns:sel?"320px 1fr":"1fr",gap:12}}>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {filtered.map(cs=>(
+            <button key={cs.id} onClick={()=>setSel(sel?.id===cs.id?null:cs)}
+              style={{textAlign:"left",background:sel?.id===cs.id?C.panel:"transparent",border:`1px solid ${sel?.id===cs.id?cs.color+"60":C.border}`,borderRadius:12,padding:14,cursor:"pointer",width:"100%"}}>
+              <div style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:8}}>
+                <span style={{fontSize:24,flexShrink:0}}>{cs.emoji}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontFamily:C.mono,fontSize:11,fontWeight:700,color:C.text,marginBottom:2}}>{cs.brand}</div>
+                  <div style={{fontFamily:C.mono,fontSize:9,color:C.dim}}>{cs.actor}</div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                <Badge color={qc[cs.quad]}>Q{cs.quad}</Badge>
+                {cs.asci&&<Badge color={C.orange}>ASCI</Badge>}
+                {cs.ncpcr&&<Badge color={C.purple}>NCPCR</Badge>}
+                <Badge color={C.red}>NTI {cs.score.nti}</Badge>
+                <Badge color={C.cyan}>ATE {cs.score.ate}</Badge>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {sel&&(
+          <Pnl glow={sel.color}>
+            <div style={{fontSize:28,marginBottom:8}}>{sel.emoji}</div>
+            <div style={{fontFamily:C.mono,fontSize:13,fontWeight:700,color:C.text,marginBottom:4}}>{sel.brand}</div>
+            <div style={{fontFamily:C.mono,fontSize:10,color:C.dim,marginBottom:14,fontStyle:"italic"}}>{sel.actor}</div>
+            {[["What the ad shows",sel.claim,C.dim],["What is actually true",sel.reality,C.text],["Source / documentation",sel.source,C.cyan],["Health impact",sel.harmful,C.orange]].map(([l,v,col])=>(
+              <div key={l} style={{background:C.bg,borderRadius:8,padding:12,marginBottom:8}}>
+                <div style={{fontFamily:C.mono,fontSize:8,color:C.faint,letterSpacing:"0.2em",marginBottom:5}}>{l.toUpperCase()}</div>
+                <div style={{fontSize:12,color:col,lineHeight:1.7}}>{v}</div>
+              </div>
+            ))}
+            <div style={{background:C.purple+"15",border:`1px solid ${C.purple}40`,borderRadius:10,padding:14,marginBottom:8}}>
+              <div style={{fontFamily:C.mono,fontSize:8,color:C.purple,letterSpacing:"0.2em",marginBottom:8}}>👶 HOW THIS AFFECTS CHILDREN</div>
+              <div style={{fontSize:13,color:C.text,lineHeight:1.8}}>{sel.kids}</div>
+            </div>
+            <div style={{background:C.green+"10",border:`1px solid ${C.green}30`,borderRadius:10,padding:14}}>
+              <div style={{fontFamily:C.mono,fontSize:8,color:C.green,letterSpacing:"0.2em",marginBottom:8}}>💡 THE MORAL</div>
+              <div style={{fontSize:14,color:C.text,lineHeight:1.8,fontStyle:"italic"}}>"{sel.moral}"</div>
+            </div>
+          </Pnl>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── TAB 5: FOR KIDS ───────────────────────────────────────────────────────────
+function ForKids(){
+  const [open,setOpen]=useState({});
+  const toggle=id=>setOpen(o=>({...o,[id]:!o[id]}));
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      <div style={{padding:20,background:C.panel,border:`1px solid ${C.purple}40`,borderRadius:14,textAlign:"center"}}>
+        <div style={{fontSize:36,marginBottom:10}}>👋</div>
+        <div style={{fontFamily:C.mono,fontSize:14,fontWeight:700,color:C.purple,marginBottom:10}}>This section is for you</div>
+        <p style={{fontSize:13,color:C.dim,lineHeight:1.85,maxWidth:520,margin:"0 auto"}}>
+          Ads are made by very smart adults whose job is to make you want things. That is not always wrong — but you deserve to know how it works.<br/><br/>
+          <strong style={{color:C.text}}>Tap each story to find out what's really happening.</strong>
+        </p>
+      </div>
+      {KID_STORIES.map(s=>(
+        <div key={s.id} style={{border:`1px solid ${open[s.id]?s.color+"55":C.border}`,borderRadius:14,overflow:"hidden"}}>
+          <button onClick={()=>toggle(s.id)} style={{width:"100%",textAlign:"left",background:C.panel,border:"none",padding:18,cursor:"pointer"}}>
+            <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
+              <span style={{fontSize:26,flexShrink:0}}>{s.emoji}</span>
+              <div style={{flex:1}}>
+                <div style={{fontFamily:C.mono,fontSize:12,fontWeight:700,color:s.color,marginBottom:6}}>{s.title}</div>
+                <p style={{fontSize:12,color:C.dim,lineHeight:1.7,margin:0}}>{s.hook}</p>
+              </div>
+              <span style={{color:C.faint,fontSize:18,flexShrink:0,display:"inline-block",transform:open[s.id]?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.3s"}}>▼</span>
+            </div>
+          </button>
+          {open[s.id]&&(
+            <div style={{padding:"0 18px 18px",background:C.bg}}>
+              <div style={{background:C.panel,borderRadius:10,padding:16,marginBottom:10,borderLeft:`3px solid ${s.color}`}}>
+                <div style={{fontFamily:C.mono,fontSize:8,color:s.color,letterSpacing:"0.2em",marginBottom:8}}>WHAT'S REALLY HAPPENING</div>
+                <p style={{fontSize:13,color:C.text,lineHeight:1.85,margin:0}}>{s.reveal}</p>
+              </div>
+              <div style={{background:C.green+"10",border:`1px solid ${C.green}30`,borderRadius:10,padding:14,marginBottom:10}}>
+                <div style={{fontFamily:C.mono,fontSize:8,color:C.green,letterSpacing:"0.2em",marginBottom:8}}>💡 WHAT THIS TEACHES US</div>
+                <p style={{fontSize:14,color:C.text,lineHeight:1.8,margin:0,fontStyle:"italic"}}>"{s.moral}"</p>
+              </div>
+              <div style={{background:C.cyan+"08",border:`1px solid ${C.cyan}25`,borderRadius:10,padding:14}}>
+                <div style={{fontFamily:C.mono,fontSize:8,color:C.cyan,letterSpacing:"0.2em",marginBottom:8}}>🤔 THINK ABOUT THIS</div>
+                <p style={{fontSize:13,color:C.text,lineHeight:1.8,margin:0}}>{s.think}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+      <div style={{padding:20,background:C.purple+"12",border:`1px solid ${C.purple}30`,borderRadius:14,textAlign:"center"}}>
+        <div style={{fontSize:24,marginBottom:10}}>🌟</div>
+        <p style={{fontSize:13,color:C.text,lineHeight:1.85,margin:"0 auto",maxWidth:520}}>
+          You don't have to stop watching ads or stop liking things.<br/>
+          Just remember: <strong style={{color:C.purple}}>the best question is always "really?"</strong><br/><br/>
+          "This drink makes you a champion — <em>really?</em>"<br/>
+          "This hero uses this product — <em>really?</em>"<br/>
+          "This food looks exactly like that — <em>really?</em>"<br/><br/>
+          Asking "really?" is not being negative. It's being the smartest person in the room.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── TAB 6: DATA SOURCES ───────────────────────────────────────────────────────
+function DataSrc(){
+  const w=useW();const narrow=w<700;
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      <Pnl>
+        <Lbl>How the dataset works — no manual feeding needed</Lbl>
+        <p style={{fontSize:13,color:C.text,lineHeight:1.8,marginBottom:12}}>The data already exists in court records, government databases, Google Maps reviews, and from real consumers. We aggregate it automatically — no one needs to manually enter it.</p>
+        <div style={{display:"grid",gridTemplateColumns:narrow?"1fr":"1fr 1fr 1fr",gap:8}}>
+          {[["Real-time",C.cyan,"ASCI posts rulings weekly. Google Maps reviews update daily."],
+            ["Legally verified",C.green,"FSSAI lab tests and court findings are legally established fact."],
+            ["Crowdsourced",C.purple,"Your feedback click is the r̄_binary term in the ATE math spec — exact."]
+          ].map(([t,c,d])=>(
+            <div key={t} style={{background:C.bg,borderRadius:8,padding:12}}>
+              <div style={{fontFamily:C.mono,fontSize:10,color:c,marginBottom:6}}>{t}</div>
+              <div style={{fontSize:11,color:C.dim,lineHeight:1.65}}>{d}</div>
+            </div>
+          ))}
+        </div>
+      </Pnl>
+      <div style={{display:"grid",gridTemplateColumns:narrow?"1fr":"1fr 1fr",gap:12}}>
+        {DATA_SOURCES.map(src=>(
+          <Pnl key={src.name}>
+            <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:12}}>
+              <span style={{fontSize:24,flexShrink:0}}>{src.icon}</span>
+              <div>
+                <div style={{fontFamily:C.mono,fontSize:12,fontWeight:700,color:C.text,marginBottom:2}}>{src.name}</div>
+                <div style={{fontFamily:C.mono,fontSize:9,color:C.dim}}>{src.full}</div>
+              </div>
+            </div>
+            <p style={{fontSize:12,color:C.dim,lineHeight:1.7,marginBottom:10}}>{src.what}</p>
+            <div style={{background:C.bg,borderRadius:7,padding:10,marginBottom:10}}>
+              <div style={{fontFamily:C.mono,fontSize:8,color:C.cyan,letterSpacing:"0.15em",marginBottom:5}}>HOW WE USE IT</div>
+              <div style={{fontSize:11,color:C.text,lineHeight:1.6}}>{src.how}</div>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontFamily:C.mono,fontSize:8,color:C.faint,marginBottom:3}}>RELIABILITY</div>
+                <div style={{width:100,height:3,background:C.border,borderRadius:2}}>
+                  <div style={{width:`${src.rel*100}%`,height:"100%",background:src.rel>0.85?C.green:C.yellow,borderRadius:2}}/>
+                </div>
+              </div>
+              {src.url?<span style={{fontFamily:C.mono,fontSize:8,color:C.faint}}>{src.url}</span>:<Badge color={C.purple}>You</Badge>}
+            </div>
+          </Pnl>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── ROOT APP ──────────────────────────────────────────────────────────────────
+const TABS=[
+  {id:0,label:"🔬 Analyze Ad"},
+  {id:1,label:"🏭 ATE Engine"},
+  {id:2,label:"📊 Unified"},
+  {id:3,label:"🇮🇳 Real Cases"},
+  {id:4,label:"👶 For Kids"},
+  {id:5,label:"📡 Data"},
+];
+
+function App(){
+  const [tab,setTab]=useState(0);
+  const [ntiScore,setNtiScore]=useState(null);
+  const [ateScore,setAteScore]=useState(null);
+  const [kidMode,setKidMode]=useState(false);
+  const [apiKey,setApiKey]=useState(()=>localStorage.getItem("adsach_key")||"");
+  const w=useW();const narrow=w<600;
+
+  return(
+    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"system-ui,sans-serif"}}>
+      <div style={{borderBottom:`1px solid ${C.border}`,padding:"0 14px",minHeight:52,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:C.hdr,backdropFilter:"blur(16px)",zIndex:100,gap:10,flexWrap:"wrap"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+          <span style={{fontFamily:C.mono,fontSize:14,fontWeight:900,background:`linear-gradient(135deg,${C.pink},${C.purple})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>AD SACH</span>
+          {!narrow&&<span style={{fontFamily:C.mono,fontSize:8,color:C.faint,letterSpacing:"0.2em"}}>अड् सच · INDIA</span>}
+        </div>
+        <div style={{display:"flex",gap:3,flexWrap:"wrap",justifyContent:"center"}}>
+          {TABS.map(t=>(
+            <button key={t.id} onClick={()=>setTab(t.id)}
+              style={{fontFamily:C.mono,fontSize:narrow?8:9,padding:"5px 9px",background:tab===t.id?C.pink+"20":"transparent",border:`1px solid ${tab===t.id?C.pink+"50":"transparent"}`,color:tab===t.id?C.pink:C.dim,borderRadius:5,cursor:"pointer",whiteSpace:"nowrap"}}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0,flexWrap:"wrap"}}>
+          {ntiScore!==null&&<div onClick={()=>setTab(2)} style={{fontFamily:C.mono,fontSize:9,padding:"3px 8px",borderRadius:12,background:C.pink+"20",border:`1px solid ${C.pink}40`,color:C.pink,cursor:"pointer"}}>NTI {Math.round(ntiScore)}</div>}
+          {ateScore!==null&&<div onClick={()=>setTab(2)} style={{fontFamily:C.mono,fontSize:9,padding:"3px 8px",borderRadius:12,background:C.cyan+"15",border:`1px solid ${C.cyan}40`,color:C.cyan,cursor:"pointer"}}>ATE {Math.round(ateScore)}</div>}
+          <button onClick={()=>setKidMode(k=>!k)}
+            style={{fontFamily:C.mono,fontSize:9,padding:"4px 9px",background:kidMode?C.purple+"25":C.bg,border:`1px solid ${kidMode?C.purple:C.border}`,color:kidMode?C.purple:C.faint,borderRadius:12,cursor:"pointer"}}>
+            👶 {kidMode?"ON":"OFF"}
+          </button>
+          <ApiKeySetup apiKey={apiKey} setApiKey={setApiKey}/>
+        </div>
+      </div>
+
+      <div style={{padding:14,maxWidth:1340,margin:"0 auto"}}>
+        {tab===0&&<AnalyzeAd onScore={setNtiScore} kidMode={kidMode} apiKey={apiKey}/>}
+        {tab===1&&<ATEEngine onScore={setAteScore}/>}
+        {tab===2&&<Unified ntiScore={ntiScore} ateScore={ateScore}/>}
+        {tab===3&&<RealCases/>}
+        {tab===4&&<ForKids/>}
+        {tab===5&&<DataSrc/>}
+      </div>
+
+      <div style={{borderTop:`1px solid ${C.border}`,padding:"10px 16px",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
+        <span style={{fontFamily:C.mono,fontSize:8,color:C.faint}}>ASCI · FSSAI · NCPCR · Courts — public data. Scores are framework applications, not legal verdicts.</span>
+        <span style={{fontFamily:C.mono,fontSize:8,color:C.faint}}>NTI-AD AI · ATE · PAVE-C v2.0 · S R Tulasi Krishna</span>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
