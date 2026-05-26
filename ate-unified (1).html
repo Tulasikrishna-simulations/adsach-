@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ATE × NTI-AD — Unified Trust Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#07080a;--surface:#0e0f12;--panel:#131418;--border:#1e2128;--hi:#2a2d38;
+  --green:#3ddc84;--red:#f06060;--amber:#e8a020;--blue:#5090e0;--purple:#a060e0;--pink:#e060a0;
+  --text:#c9bfa8;--dim:#5a5446;--faint:#2a2520;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+::-webkit-scrollbar{width:5px;background:var(--surface);}
+::-webkit-scrollbar-thumb{background:var(--hi);border-radius:3px;}
+input,textarea,select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);border-radius:4px;outline:none;padding:9px 12px;}
+input:focus,textarea:focus{border-color:var(--amber);}
+button{cursor:pointer;font-family:var(--mono);}
+
+/* ── HEADER ── */
+header{background:rgba(7,8,10,0.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:0 20px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo{font-family:var(--mono);font-size:13px;font-weight:900;color:var(--amber);letter-spacing:0.05em;}
+.logo span{color:var(--dim);}
+.key-area{display:flex;align-items:center;gap:8px;}
+.key-input{font-size:10px;padding:5px 10px;width:200px;border-color:var(--border);}
+.key-input:focus{border-color:var(--amber);}
+
+/* ── MODE SELECTOR ── */
+.mode-bar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--border);}
+.mode-btn{padding:18px 20px;background:transparent;border:none;border-right:1px solid var(--border);color:var(--dim);font-family:var(--mono);font-size:10px;letter-spacing:0.15em;text-transform:uppercase;transition:all 0.2s;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.mode-btn:last-child{border-right:none;}
+.mode-btn.active{background:var(--panel);color:var(--amber);border-bottom:2px solid var(--amber);}
+.mode-btn:hover:not(.active){background:var(--surface);color:var(--text);}
+.mode-icon{font-size:22px;}
+
+/* ── LAYOUT ── */
+.main{display:grid;grid-template-columns:1fr 380px;gap:0;min-height:calc(100vh - 120px);}
+.left{padding:20px;border-right:1px solid var(--border);}
+.right{padding:20px;background:var(--surface);}
+
+/* ── UPLOAD ZONE ── */
+.upload-zone{border:1px dashed var(--border);border-radius:8px;min-height:220px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;background:var(--panel);}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--amber);background:rgba(232,160,32,0.05);}
+.upload-zone img{width:100%;max-height:360px;object-fit:cover;display:block;}
+.upload-clear{position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.7);border:1px solid var(--border);border-radius:50%;width:28px;height:28px;color:var(--text);font-size:14px;display:flex;align-items:center;justify-content:center;}
+.upload-hint{text-align:center;padding:30px;}
+.upload-hint .icon{font-size:40px;margin-bottom:12px;}
+.upload-hint .title{color:var(--amber);font-family:var(--mono);font-size:12px;letter-spacing:0.1em;margin-bottom:6px;}
+.upload-hint .sub{color:var(--dim);font-size:11px;font-family:var(--mono);}
+
+/* ── BUTTONS ── */
+.btn{padding:12px 20px;border:none;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:0.1em;transition:all 0.2s;text-transform:uppercase;}
+.btn-scan{background:linear-gradient(135deg,#c07020,#a05010);color:#fff;width:100%;margin-top:12px;}
+.btn-scan:disabled{background:var(--hi);color:var(--dim);cursor:not-allowed;}
+.btn-green{background:#0a1e0a;border:1px solid var(--green);color:var(--green);}
+.btn-red{background:#1e0a0a;border:1px solid var(--red);color:var(--red);}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--dim);}
+.btn-outline:hover{border-color:var(--amber);color:var(--amber);}
+
+/* ── SECTION LABEL ── */
+.sec{font-family:var(--mono);font-size:9px;color:var(--amber);letter-spacing:0.3em;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+
+/* ── SCORE DISPLAY ── */
+.big-score{font-family:var(--mono);font-size:56px;font-weight:900;line-height:1;letter-spacing:-2px;}
+.score-ring{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;margin:0 auto 8px;}
+.score-ring-inner{width:64px;height:64px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:15px;font-weight:900;}
+
+/* ── METRIC ROWS ── */
+.mrow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);}
+.mrow-label{font-family:var(--mono);font-size:10px;color:var(--dim);}
+.mrow-val{font-family:var(--mono);font-size:12px;font-weight:700;}
+
+/* ── BAR ── */
+.bar-wrap{margin-bottom:10px;}
+.bar-label{display:flex;justify-content:space-between;margin-bottom:3px;font-family:var(--mono);font-size:9px;color:var(--dim);}
+.bar-track{height:3px;background:var(--border);border-radius:2px;}
+.bar-fill{height:100%;border-radius:2px;transition:width 0.8s ease;}
+
+/* ── CHIP ── */
+.chip{font-family:var(--mono);font-size:9px;padding:2px 8px;border-radius:20px;display:inline-block;margin:2px 3px 2px 0;}
+
+/* ── HEALTH HALO ── */
+.halo-row{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border-radius:6px;overflow:hidden;margin-bottom:10px;}
+.halo-cell{background:var(--panel);padding:12px;}
+.halo-cell-label{font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:0.2em;margin-bottom:4px;}
+.halo-cell-val{font-size:12px;line-height:1.5;}
+.halo-flag{background:var(--red);color:#fff;border-radius:3px;padding:2px 6px;font-size:9px;font-family:var(--mono);margin-left:6px;}
+.halo-ok{background:var(--green);color:#000;border-radius:3px;padding:2px 6px;font-size:9px;font-family:var(--mono);margin-left:6px;}
+
+/* ── ATE SPECIFIC ── */
+.ate-input{margin-bottom:10px;}
+.ate-input label{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:0.2em;display:block;margin-bottom:4px;}
+.ate-input input{width:100%;font-size:13px;}
+.audit-log{max-height:200px;overflow-y:auto;border:1px solid var(--border);padding:10px;border-radius:4px;}
+.audit-entry{font-family:var(--mono);font-size:10px;padding:3px 0;border-bottom:1px solid var(--faint);}
+
+/* ── AD SCANNER ── */
+.ad-textarea{width:100%;min-height:120px;font-size:12px;line-height:1.7;resize:vertical;}
+.sample-btns{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0;}
+.sample-btn{font-family:var(--mono);font-size:9px;padding:3px 9px;background:var(--panel);border:1px solid var(--border);color:var(--dim);border-radius:20px;}
+.sample-btn:hover{border-color:var(--amber);color:var(--amber);}
+
+/* ── UNIFIED SCORE ── */
+.unified-panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:18px;margin-top:16px;}
+.quad-display{text-align:center;padding:16px 0;}
+.quad-big{font-family:var(--mono);font-size:52px;font-weight:900;line-height:1;}
+.quad-label{font-family:var(--mono);font-size:9px;letter-spacing:0.2em;margin-top:6px;}
+
+/* ── SPINNER ── */
+@keyframes spin{to{transform:rotate(360deg);}}
+.spinner{width:14px;height:14px;border:2px solid var(--amber);border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+.fade-up{animation:fadeUp 0.4s ease;}
+
+/* ── ANTI-AD ── */
+.anti-ad{background:#080a08;border:1px solid var(--border);border-top:2px solid var(--amber);border-left:2px solid var(--amber);padding:20px;font-family:var(--mono);font-size:13px;line-height:2.2;color:var(--text);white-space:pre-wrap;letter-spacing:0.03em;border-radius:4px;}
+.locked-box{text-align:center;padding:40px 20px;border:1px solid var(--red);background:#0e0808;border-radius:6px;}
+
+@media(max-width:800px){
+  .main{grid-template-columns:1fr;}
+  .right{border-top:1px solid var(--border);}
+  .mode-btn{font-size:8px;padding:14px 10px;}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">ATE <span>×</span> NTI-AD <span>·</span> UNIFIED TRUST ENGINE</div>
+  <div class="key-area">
+    <input type="password" class="key-input" id="apiKey" placeholder="sk-ant-... (for AI analysis)" oninput="saveKey(this.value)"/>
+    <div id="keyStatus" style="font-family:var(--mono);font-size:9px;color:var(--dim);">no key</div>
+  </div>
+</header>
+
+<!-- MODE SELECTOR -->
+<div class="mode-bar">
+  <button class="mode-btn active" id="modeBtn0" onclick="setMode(0)">
+    <span class="mode-icon">🍽️</span>
+    PLATE SCAN
+  </button>
+  <button class="mode-btn" id="modeBtn1" onclick="setMode(1)">
+    <span class="mode-icon">📦</span>
+    LABEL SCAN
+  </button>
+  <button class="mode-btn" id="modeBtn2" onclick="setMode(2)">
+    <span class="mode-icon">📱</span>
+    AD SCAN
+  </button>
+</div>
+
+<div class="main">
+  <!-- LEFT PANEL -->
+  <div class="left" id="leftPanel">
+
+    <!-- ══ MODE 0: PLATE SCAN ══ -->
+    <div id="mode0">
+      <div class="sec">Plate Scan — Photograph Restaurant Food</div>
+
+      <div class="upload-zone" id="plateZone" onclick="triggerUpload('plateFile')"
+        ondrop="handleDrop(event,'plate')" ondragover="dragOver(event)" ondragleave="dragLeave(event)">
+        <img id="plateImg" style="display:none;"/>
+        <div id="plateHint" class="upload-hint">
+          <div class="icon">🍽️</div>
+          <div class="title">Drop plate photo or click to upload</div>
+          <div class="sub">JPG · PNG · WEBP · Camera photo</div>
+        </div>
+        <button class="upload-clear" id="plateClear" style="display:none;" onclick="clearImg('plate',event)">×</button>
+      </div>
+      <input type="file" id="plateFile" accept="image/*" capture="environment" style="display:none;" onchange="loadImg('plate',this)"/>
+
+      <button class="btn btn-scan" id="plateScanBtn" onclick="scanPlate()" disabled>🔬 SCAN PLATE</button>
+
+      <!-- Manual override -->
+      <div style="margin-top:20px;">
+        <div class="sec">Or Enter Data Manually (ATE Engine)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="ate-input"><label>SHOP NAME</label><input id="shopName" value="Ali's Biryani House" style="font-size:12px;"/></div>
+          <div class="ate-input"><label>MEAT PURCHASED (kg)</label><input type="number" id="meatKg" value="10" step="0.5"/></div>
+          <div class="ate-input"><label>PLATES SERVED</label><input type="number" id="plates" value="150"/></div>
+          <div class="ate-input"><label>CLAIMED MEAT PER PLATE (g)</label><input type="number" id="claimedMeat" value="120"/></div>
+          <div class="ate-input"><label>CLAIMED CALORIES</label><input type="number" id="claimedKcal" value="850"/></div>
+          <div class="ate-input"><label>PREP TIME (hours)</label><input type="number" id="prepHours" value="2" step="0.5"/></div>
+        </div>
+        <button class="btn btn-scan" onclick="computeATE()">⚙ COMPUTE ATE SCORE</button>
+      </div>
+
+      <!-- Audit feed -->
+      <div style="margin-top:20px;" id="auditSection">
+        <div class="sec">Customer Audit Feed</div>
+        <div style="padding:12px;border:1px solid var(--border);background:var(--panel);margin-bottom:12px;font-family:var(--mono);font-size:11px;color:var(--dim);border-radius:4px;">
+          AUDIT PROMPT: Does your plate match the claimed <span id="auditClaimDisplay" style="color:var(--amber);">120g</span> of meat?
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:12px;">
+          <button class="btn btn-green" style="flex:1;padding:14px;" onclick="addAudit(true)">✓ YES — MATCHES</button>
+          <button class="btn btn-red" style="flex:1;padding:14px;" onclick="addAudit(false)">✗ NO — MISMATCH</button>
+        </div>
+        <div class="audit-log" id="auditLog"><div style="font-family:var(--mono);font-size:10px;color:var(--dim);">NO AUDITS YET</div></div>
+        <button class="btn btn-outline" style="margin-top:8px;font-size:9px;padding:6px 12px;" onclick="resetAudits()">RESET AUDITS</button>
+      </div>
+    </div>
+
+    <!-- ══ MODE 1: LABEL SCAN ══ -->
+    <div id="mode1" style="display:none;">
+      <div class="sec">Label Scan — Photograph Product Packet</div>
+
+      <div class="upload-zone" id="labelZone" onclick="triggerUpload('labelFile')"
+        ondrop="handleDrop(event,'label')" ondragover="dragOver(event)" ondragleave="dragLeave(event)">
+        <img id="labelImg" style="display:none;"/>
+        <div id="labelHint" class="upload-hint">
+          <div class="icon">📦</div>
+          <div class="title">Drop packet photo or click to upload</div>
+          <div class="sub">Photograph front + back of pack · Bournvita · Maggi · Boost · Any FMCG</div>
+        </div>
+        <button class="upload-clear" id="labelClear" style="display:none;" onclick="clearImg('label',event)">×</button>
+      </div>
+      <input type="file" id="labelFile" accept="image/*" capture="environment" style="display:none;" onchange="loadImg('label',this)"/>
+
+      <button class="btn btn-scan" id="labelScanBtn" onclick="scanLabel()" disabled>🔬 SCAN LABEL</button>
+
+      <!-- Known products quick load -->
+      <div style="margin-top:16px;">
+        <div class="sec">Known Indian Products — Quick Analysis</div>
+        <div class="sample-btns">
+          <button class="sample-btn" onclick="loadKnownProduct('bournvita')">🏆 Bournvita</button>
+          <button class="sample-btn" onclick="loadKnownProduct('maggi')">🍜 Maggi</button>
+          <button class="sample-btn" onclick="loadKnownProduct('boost')">💪 Boost</button>
+          <button class="sample-btn" onclick="loadKnownProduct('horlicks')">🥛 Horlicks</button>
+          <button class="sample-btn" onclick="loadKnownProduct('nutella')">🍫 Nutella</button>
+          <button class="sample-btn" onclick="loadKnownProduct('kelloggs')">🌾 Kellogg's</button>
+          <button class="sample-btn" onclick="loadKnownProduct('kurkure')">🌶 Kurkure</button>
+          <button class="sample-btn" onclick="loadKnownProduct('tropicana')">🍊 Tropicana</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ MODE 2: AD SCAN ══ -->
+    <div id="mode2" style="display:none;">
+      <div class="sec">Ad Scan — Paste Any Indian Advertisement</div>
+      <textarea class="ad-textarea" id="adText" placeholder="Paste ad text here — TV voiceover, Instagram caption, packet front text, hoarding...
+
+Example: 'Bournvita — Tayyari Jeet Ki! Made with vitamins and minerals, helps your child grow stronger and smarter. Champions drink Bournvita every day.'"></textarea>
+
+      <div class="sample-btns">
+        <button class="sample-btn" onclick="loadAdSample('bournvita')">🏆 Bournvita</button>
+        <button class="sample-btn" onclick="loadAdSample('boost')">💪 Boost</button>
+        <button class="sample-btn" onclick="loadAdSample('vimal')">🚫 Vimal</button>
+        <button class="sample-btn" onclick="loadAdSample('maggi')">🍜 Maggi</button>
+        <button class="sample-btn" onclick="loadAdSample('fairness')">💄 Fair&Lovely</button>
+        <button class="sample-btn" onclick="loadAdSample('honest')">✅ Honest Ad</button>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+        <label style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--dim);cursor:pointer;">
+          <input type="checkbox" id="kidMode" style="accent-color:var(--purple);"/> 👶 Kid explain mode
+        </label>
+      </div>
+
+      <button class="btn btn-scan" id="adScanBtn" onclick="scanAd()">🔬 ANALYZE AD</button>
+    </div>
+
+  </div>
+
+  <!-- RIGHT PANEL — results -->
+  <div class="right" id="rightPanel">
+    <div id="emptyState" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:var(--dim);">
+      <div style="font-size:48px;margin-bottom:16px;">⚡</div>
+      <div style="font-family:var(--mono);font-size:11px;letter-spacing:0.15em;">SELECT A SCAN MODE</div>
+      <div style="font-family:var(--mono);font-size:9px;margin-top:8px;color:var(--faint);">PLATE · LABEL · AD</div>
+    </div>
+
+    <div id="loadingState" style="display:none;flex-direction:column;align-items:center;justify-content:center;height:300px;text-align:center;">
+      <div class="spinner" style="width:28px;height:28px;margin-bottom:16px;"></div>
+      <div id="loadingText" style="font-family:var(--mono);font-size:11px;color:var(--amber);letter-spacing:0.1em;">ANALYZING...</div>
+    </div>
+
+    <div id="results" style="display:none;"></div>
+  </div>
+</div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let currentMode = 0;
+let plateB64 = null, labelB64 = null;
+let audits = [];
+let ateScore = null, ntiScore = null, labelScore = null;
+let apiKey = localStorage.getItem('ate_key') || '';
+if(apiKey) { document.getElementById('apiKey').value = apiKey; document.getElementById('keyStatus').textContent = '✓ key set'; document.getElementById('keyStatus').style.color = 'var(--green)'; }
+
+function saveKey(v){ apiKey = v.trim(); localStorage.setItem('ate_key', apiKey); const el = document.getElementById('keyStatus'); if(apiKey){ el.textContent='✓ key set'; el.style.color='var(--green)'; } else { el.textContent='no key'; el.style.color='var(--dim)'; } }
+
+// ── MATH ENGINE ───────────────────────────────────────────────────────────────
+const LAMBDA = Math.log(2) / 0.2;
+const T_MAX = 100;
+
+function computeATE_math(meatKg, plates, claimedMeat, claimedKcal, prepHours) {
+  const actualMeat = (meatKg * 1000) / Math.max(plates, 1);
+  const actualKcal = actualMeat * 2.8;
+  const actualFresh = prepHours <= 2 ? 1.0 : prepHours <= 5 ? 0.72 : 0.38;
+  const V = [Math.min(actualMeat/200,1), Math.min(actualKcal/1000,1), actualFresh, 1.0];
+  const C = [Math.min(claimedMeat/200,1), Math.min(claimedKcal/1000,1), 1.0, 1.0];
+  const delta = Math.sqrt(V.reduce((s,v,i) => s+(v-C[i])**2, 0));
+  const alpha = Math.exp(-LAMBDA * delta);
+  const S = Math.max(audits.length, 1);
+  const T_S = T_MAX * (1 - Math.exp(-alpha * S));
+  const pos = audits.filter(Boolean).length;
+  const bm = audits.length > 0 ? pos/audits.length : 0.5;
+  const VI = Math.max(0, Math.min(1, 1-1.5*delta));
+  const AS = bm;
+  const DRS = Math.min(1, 0.4*(1-bm) + 0.6*Math.min(delta*2,1));
+  const raw = Math.max(0, Math.min(1, 0.45*VI + 0.45*AS - 0.25*DRS));
+  const score = Math.round(100 / (1 + Math.exp(-8*(raw-0.5))));
+  return { delta, alpha, T_S, VI, AS, DRS, raw, score, S, actualMeat: actualMeat.toFixed(1), actualKcal: actualKcal.toFixed(0) };
+}
+
+// ── PAVE-C v2.0 ───────────────────────────────────────────────────────────────
+const ME = {
+  _sp(t){ return (t.match(/\d+\.?\d*\s*(g|mg|kg|ml|l|%|kcal|cal|cm|days?|weeks?)\b/gi)||[]).length + (t.match(/\d+\s*percent/gi)||[]).length; },
+  lps(text){ const ss=text.split(/[.!?]+/).map(s=>s.trim()).filter(s=>s.length>5),n=ss.length||1;let wS=0,wT=0;ss.forEach((s,idx)=>{const i=idx+1,sl=s.toLowerCase(),sw=sl.split(/\s+/).filter(Boolean);const modal=/\bmust\b|\bneed to\b/.test(sl)?0.95:/\bshould\b/.test(sl)?0.65:/\bcould\b|\bmight\b/.test(sl)?0.25:0;const imp=/^(buy|get|try|act|grab|hurry|rush|don'?t|never)\b/i.test(s.trim())?1:0;const neg=Math.min(1,(s.match(/don'?t miss|last chance|now or never/gi)||[]).length*0.4);const you=Math.min(1,(sw.filter(w=>/^(you|your|yourself)$/i.test(w)).length/sw.length)*8);const sc=0.30*modal+0.30*imp+0.20*neg+0.20*you;const wp=n>1?1+0.4*(1-(i-1)/(n-1)):1.4;wS+=sc*wp;wT+=wp;});return Math.min(1,wS/(wT||1));},
+  hpsi(text){ const tl=text.toLowerCase(),K=6,Hmax=Math.log2(K);const techs=[{name:"Urgency",dp:0.35,tr:["hurry","now","today only","limited time","act now","expires","deadline"]},{name:"Scarcity",dp:0.30,tr:["only left","limited","last chance","almost gone"]},{name:"FOMO",dp:0.40,tr:["don't miss","everyone","missing out","while you can"]},{name:"Authority",dp:0.20,tr:["expert","doctor","certified","proven","scientifically","clinically"]},{name:"SocialProof",dp:0.15,tr:["thousands","customers love","best seller","trusted by","crore"]},{name:"Reciprocity",dp:0.15,tr:["free","gift","bonus","guarantee","refund"]}];let pBuy=1/K;const act=[];for(const t of techs){const hits=t.tr.filter(tr=>tl.includes(tr)).length;const a=Math.min(1,hits/2);if(a>0){pBuy=Math.min(0.92,pBuy+t.dp*a);act.push({name:t.name,a});}}const pO=Math.max(0,(1-pBuy)/(K-1));const H=-[pBuy,...Array(K-1).fill(pO)].reduce((s,p)=>s+(p>1e-10?p*Math.log2(p):0),0);return{score:Math.max(0,Math.min(1,1-H/Hmax)),act};},
+  sec(text){ const tl=text.toLowerCase();const cats=[{terms:["absolutely","completely","perfectly","flawlessly"],sc:0.8},{terms:["best","greatest","ultimate","world-class","#1","number one"],sc:0.7},{terms:["amazing","incredible","revolutionary","breakthrough","phenomenal","life-changing","guaranteed","proven"],sc:0.5},{terms:["unlike anything","beyond comparison","never seen before"],sc:0.9}];let sw=0;for(const{terms,sc}of cats){for(const t of terms){const n=(tl.match(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'))||[]).length;sw+=n*sc;}}const sp=this._sp(text);return{raw:sw/Math.max(sp,1),norm:Math.min(1,sw/Math.max(sp,1)/5)};},
+  vi(text){ const ss=text.split(/[.!?;]+/).map(s=>s.trim()).filter(s=>s.length>8);const list=ss.length?ss:[text];let tot=0;for(const s of list){const hasN=/\d/.test(s),hasU=/\b(g|mg|%|ml|kg|kcal|cal)\b/i.test(s);const vague=/(amazing|incredible|best|great|revolutionary|ultimate|proven|guaranteed)/i.test(s);const sp=(hasN&&hasU)?1.0:hasN?0.65:vague?0.15:0.50;tot+=(vague?0.25:0.80)*sp;}return Math.min(1,tot/list.length);},
+  as(text){ const w=text.toLowerCase().split(/\s+/).filter(Boolean),W=w.length||1;const sp=Math.min(1,this._sp(text)/3);const hg=Math.min(1,w.filter(x=>/^(may|might|could|typically|often|approximately|about)$/.test(x)).length/W*20);const ab=w.filter(x=>/^(always|never|guaranteed|definitely|absolutely|perfect)$/.test(x)).length;return Math.max(0,Math.min(1,0.5*sp+0.3*hg+0.3-Math.min(0.4,ab/W*15)));},
+  clf(text){ const W=text.split(/\s+/).filter(Boolean).length||1;const exc=(text.match(/!/g)||[]).length,caps=(text.match(/\b[A-Z]{2,}\b/g)||[]).length;return Math.min(1,0.35*Math.min(1,W/150)+0.45*Math.min(1,((exc+caps)/W)*8)+0.20*0.5);},
+  analyze(text){ if(!text.trim())return null;const lpsV=this.lps(text),secR=this.sec(text),hpsiR=this.hpsi(text),viV=this.vi(text),asV=this.as(text),clfV=this.clf(text);const edvMag=Math.min(1,(text.toLowerCase().match(/(fear|urgent|miss|lose|danger|regret|shame|exclusive|elite|envy)/g)||[]).length/text.split(/\s+/).length*8);const mpi=Math.min(1,(1-(1-0.22*Math.min(1,hpsiR.act.filter(t=>t.name==="Urgency").length))*(1-0.25*Math.min(1,hpsiR.act.filter(t=>t.name==="FOMO").length))*(1-0.20*Math.min(1,hpsiR.act.length/4)))*(1+0.3*lpsV+0.2*secR.norm));const drs=Math.min(1,0.28*mpi+0.22*(1-viV)+0.18*(1-asV)+0.18*hpsiR.score+0.14*secR.norm);const cbf=(edvMag+clfV)/2;const ts=Math.max(1,Math.round((1-drs)*(1-cbf)*100));return{lps:lpsV,sec:secR,hpsi:hpsiR,vi:viV,as:asV,clf:clfV,edvMag,mpi,drs,cbf,ts};}
+};
+
+// ── HEALTH HALO ENGINE ────────────────────────────────────────────────────────
+const HEALTH_HALO_DB = {
+  bournvita:{ brand:"Cadbury Bournvita", category:"Chocolate Malt Drink", frontClaims:["Health drink","Tayyari Jeet Ki","Vitamins & Minerals","Champion preparation","Helps your child grow stronger and smarter"], ingredients:["Sugar","Malt extract","Cocoa solids","Milk solids","Liquid glucose","Vitamins","Minerals"], nutrition:{sugar_per_100g:50.3,fat_per_100g:3.7,protein_per_100g:7.4,sodium_per_100g:0.18,calories_per_100g:383}, regulatory:"NCPCR notice April 2023 — ordered removal of 'health drink' label", asciFlag:true, ncpcrFlag:true },
+  maggi:{ brand:"Maggi 2-Minute Noodles", category:"Instant Noodles", frontClaims:["2 minute noodles","The great family nourisher","Contains iron and protein","Good source of vitamins"], ingredients:["Wheat flour","Palm oil","Salt","Sugar","Onion powder","Spices","MSG (despite 'no added MSG' label)","Lead (found by FSSAI)"], nutrition:{sugar_per_100g:2.4,fat_per_100g:14.8,protein_per_100g:9.5,sodium_per_100g:2.4,calories_per_100g:385}, regulatory:"FSSAI ban June 2015 — lead at 7× safe limit. 9 crore packets recalled", asciFlag:true, ncpcrFlag:false },
+  boost:{ brand:"Boost Health Energy Drink", category:"Malt Drink", frontClaims:["Energy drink","Secret of my energy","Stamina and strength","Sports drink","Contains iron, vitamins, minerals"], ingredients:["Sugar","Malt extract","Cocoa powder","Milk solids","Liquid glucose","Salt","Vitamins","Minerals"], nutrition:{sugar_per_100g:69.8,fat_per_100g:3.2,protein_per_100g:6.1,sodium_per_100g:0.15,calories_per_100g:388}, regulatory:"ASCI complaints — energy/sports drink claims unsubstantiated", asciFlag:true, ncpcrFlag:false },
+  horlicks:{ brand:"Horlicks", category:"Malted Milk Drink", frontClaims:["The great family nourisher","Makes children taller and sharper","23 vital nutrients","Scientifically proven growth","Immunity booster"], ingredients:["Wheat flour","Sugar","Milk solids","Malt extract","Vitamins","Minerals","Salt"], nutrition:{sugar_per_100g:32.4,fat_per_100g:5.1,protein_per_100g:14.8,sodium_per_100g:0.45,calories_per_100g:390}, regulatory:"ASA UK 2020 — cannot claim makes children taller or smarter. Continued in India after UK ban", asciFlag:true, ncpcrFlag:false },
+  nutella:{ brand:"Nutella", category:"Chocolate Hazelnut Spread", frontClaims:["Made with quality cocoa","Contains hazelnuts","Part of a balanced breakfast","Natural ingredients"], ingredients:["Sugar (57%)","Palm oil (ingredient #2)","Hazelnuts (13%)","Skim milk","Cocoa","Lecithin","Vanillin"], nutrition:{sugar_per_100g:56.8,fat_per_100g:30.9,protein_per_100g:6.3,sodium_per_100g:0.11,calories_per_100g:539}, regulatory:"FTC warning — 'balanced breakfast' claim misleading. EU labeling disputes", asciFlag:false, ncpcrFlag:false },
+  kelloggs:{ brand:"Kellogg's Chocos", category:"Breakfast Cereal", frontClaims:["Whole grain","Contains vitamins and minerals","Iron for your child","Natural goodness","Good for growing children"], ingredients:["Whole grain wheat (36%)","Sugar","Refined wheat flour","Glucose syrup","Cocoa powder","Vitamins","Iron"], nutrition:{sugar_per_100g:35.4,fat_per_100g:1.8,protein_per_100g:7.2,sodium_per_100g:0.32,calories_per_100g:378}, regulatory:"ASCI complaints — 'whole grain' prominent despite being minority ingredient", asciFlag:true, ncpcrFlag:false },
+  kurkure:{ brand:"Kurkure", category:"Snack", frontClaims:["Made from real ingredients","Contains rice, corn, gram flour","Tedha hai par mera hai","No artificial colours"], ingredients:["Rice meal","Edible vegetable oil","Gram flour","Corn meal","Salt","Sugar","Spices","Flavour enhancer (MSG)","Acidity regulator"], nutrition:{sugar_per_100g:3.2,fat_per_100g:22.4,protein_per_100g:5.6,sodium_per_100g:1.1,calories_per_100g:519}, regulatory:"Consumer complaints — high fat and sodium not prominently disclosed", asciFlag:false, ncpcrFlag:false },
+  tropicana:{ brand:"Tropicana 100% Juice", category:"Fruit Drink", frontClaims:["100% fruit juice","No added sugar","Natural fruit goodness","Rich in Vitamin C","Freshly squeezed"], ingredients:["Reconstituted orange juice","Added vitamins","Natural flavours"], nutrition:{sugar_per_100g:9.8,fat_per_100g:0.1,protein_per_100g:0.5,sodium_per_100g:0.01,calories_per_100g:42}, regulatory:"ASA UK — 'freshly squeezed' claim withdrawn. Reconstituted ≠ fresh", asciFlag:false, ncpcrFlag:false },
+};
+
+function computeHealthHaloScore(product) {
+  const p = HEALTH_HALO_DB[product];
+  if(!p) return null;
+  let flags = [], score = 100;
+
+  // Sugar check
+  if(p.nutrition.sugar_per_100g > 40) { flags.push({type:'CRITICAL', msg:`Sugar: ${p.nutrition.sugar_per_100g}g per 100g — more than Coca-Cola (10.6g)`}); score -= 30; }
+  else if(p.nutrition.sugar_per_100g > 20) { flags.push({type:'WARNING', msg:`Sugar: ${p.nutrition.sugar_per_100g}g per 100g — high`}); score -= 15; }
+
+  // Health claim vs sugar reality
+  const healthWords = ['health','healthy','nutritious','nourish','growth','immunity','energy','strength','champion','sport'];
+  const hasHealthClaim = p.frontClaims.some(c => healthWords.some(w => c.toLowerCase().includes(w)));
+  if(hasHealthClaim && p.nutrition.sugar_per_100g > 25) { flags.push({type:'CRITICAL', msg:`Health claim detected but sugar is ${p.nutrition.sugar_per_100g}g/100g — misleading combination`}); score -= 25; }
+
+  // Ingredient order check — sugar as #1
+  if(p.ingredients[0].toLowerCase().includes('sugar')) { flags.push({type:'CRITICAL', msg:`Sugar is ingredient #1 — largest ingredient by weight`}); score -= 20; }
+
+  // Sodium check
+  if(p.nutrition.sodium_per_100g > 1.0) { flags.push({type:'WARNING', msg:`Sodium: ${p.nutrition.sodium_per_100g}g per 100g — high`}); score -= 10; }
+
+  // Regulatory flags
+  if(p.ncpcrFlag) { flags.push({type:'CRITICAL', msg:`NCPCR official notice issued — government confirmed misleading`}); score -= 15; }
+  if(p.asciFlag) { flags.push({type:'WARNING', msg:`ASCI complaint history — advertising standards body flagged`}); score -= 10; }
+
+  // Fat check
+  if(p.nutrition.fat_per_100g > 25) { flags.push({type:'WARNING', msg:`Fat: ${p.nutrition.fat_per_100g}g per 100g — very high`}); score -= 10; }
+
+  // Calorie check
+  if(p.nutrition.calories_per_100g > 400) { flags.push({type:'INFO', msg:`Calories: ${p.nutrition.calories_per_100g} kcal/100g — energy-dense product`}); }
+
+  const labelScore = Math.max(0, score);
+  return { product: p, flags, labelScore };
+}
+
+// ── UNIFIED SCORE ─────────────────────────────────────────────────────────────
+function computeUnified() {
+  const ate = ateScore ?? 50;
+  const nti = ntiScore ?? 50;
+  const label = labelScore ?? 50;
+  // weighted: ATE 40%, NTI 35%, Label 25%
+  const combinedNTI = ntiScore !== null && labelScore !== null ? (ntiScore * 0.35 + labelScore * 0.25) / 0.60 : (ntiScore ?? labelScore ?? 50);
+  const uti = ate * (combinedNTI / 100);
+  const aid = ate * (1 - combinedNTI / 100);
+  const quad = ate >= 50 && combinedNTI >= 35 ? "I" : ate >= 50 && combinedNTI < 35 ? "II" : ate < 50 && combinedNTI >= 35 ? "III" : "IV";
+  return { uti, aid, quad, ate, combinedNTI };
+}
+
+// ── CLAUDE API CALLS ──────────────────────────────────────────────────────────
+async function callClaudeVision(b64, mediaType, prompt) {
+  if(!apiKey) throw new Error("NO_KEY");
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST",
+    headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mediaType,data:b64}},{type:"text",text:prompt}]}]})
+  });
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const d = await res.json();
+  const raw = d.content?.find(b=>b.type==="text")?.text || "{}";
+  try{ return JSON.parse(raw.replace(/```json\n?|```/g,"").trim()); }
+  catch{ const m=raw.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]); throw new Error("Parse failed"); }
+}
+
+async function callClaudeText(prompt) {
+  if(!apiKey) throw new Error("NO_KEY");
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST",
+    headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:900,messages:[{role:"user",content:prompt}]})
+  });
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const d = await res.json();
+  const raw = d.content?.find(b=>b.type==="text")?.text || "{}";
+  try{ return JSON.parse(raw.replace(/```json\n?|```/g,"").trim()); }
+  catch{ const m=raw.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]); return {verdict:"QUESTIONABLE",summary:"Analysis complete.",main_trick:"See scores above.",consumer_question:"What evidence supports these claims?",india_context:null,targets_children:false,celebrity_note:null,kid_moral:null}; }
+}
+
+// ── SCAN FUNCTIONS ────────────────────────────────────────────────────────────
+async function scanPlate() {
+  if(!plateB64) return;
+  showLoading("SCANNING PLATE — CLAUDE VISION ANALYZING...");
+  try {
+    const vision = await callClaudeVision(plateB64.data, plateB64.type,
+`You are an expert food analyst for the ATE (Algorithmic Trust Engine) system. Analyze this plate of food.
+
+Respond ONLY in JSON:
+{
+  "meatType": "chicken|lamb|beef|pork|fish|mixed|none|unknown",
+  "estimatedWeightG": number (estimated grams of protein/meat on plate),
+  "estimatedCalories": number,
+  "freshnessScore": 0.0-1.0 (1.0 = very fresh, 0.0 = stale/old),
+  "qualityScore": 0-100,
+  "confidence": 0-100,
+  "observations": ["observation1", "observation2", "observation3"],
+  "portionAdequacy": "generous|adequate|small|very_small",
+  "cookQuality": "excellent|good|average|poor",
+  "reasoning": "2 sentences explaining your assessment"
+}`);
+
+    // Feed into ATE
+    const meatG = vision.estimatedWeightG || 100;
+    const plates = parseInt(document.getElementById('plates').value) || 1;
+    const meatKg = (meatG * plates) / 1000;
+    document.getElementById('meatKg').value = meatKg.toFixed(2);
+
+    const ate = computeATE_math(
+      meatKg, plates,
+      parseFloat(document.getElementById('claimedMeat').value)||120,
+      parseFloat(document.getElementById('claimedKcal').value)||850,
+      parseFloat(document.getElementById('prepHours').value)||2
+    );
+    ateScore = ate.score;
+
+    renderPlateResults(vision, ate);
+  } catch(e) {
+    showError(e.message === "NO_KEY" ? "Set your API key in the top right to enable plate scanning." : "Scan failed: " + e.message);
+  }
+}
+
+async function scanLabel() {
+  if(!labelB64) return;
+  showLoading("READING LABEL — CLAUDE VISION ANALYZING...");
+  try {
+    const vision = await callClaudeVision(labelB64.data, labelB64.type,
+`You are a nutritional label analyst. Read this food product label carefully.
+
+Respond ONLY in JSON:
+{
+  "brandName": "brand name",
+  "productName": "full product name",
+  "frontClaims": ["claim1", "claim2", "claim3"] (marketing claims on front of pack),
+  "ingredients": ["ingredient1 (first = largest)", "ingredient2", ...] (in order as listed),
+  "sugarPer100g": number,
+  "fatPer100g": number,
+  "proteinPer100g": number,
+  "sodiumPer100g": number,
+  "caloriesPer100g": number,
+  "servingSize": "Xg or Xml",
+  "healthClaims": ["any health/nutrition claims found"],
+  "redFlags": ["any concerning ingredients or misleading claims you notice"],
+  "confidence": 0-100,
+  "labelQuality": "clear|partial|unclear"
+}`);
+
+    // Compute health halo
+    const haloResult = computeHealthHaloFromVision(vision);
+    labelScore = haloResult.labelScore;
+
+    renderLabelResults(vision, haloResult);
+  } catch(e) {
+    showError(e.message === "NO_KEY" ? "Set your API key to enable label scanning." : "Scan failed: " + e.message);
+  }
+}
+
+async function scanAd() {
+  const text = document.getElementById('adText').value.trim();
+  if(!text) return;
+  const kidMode = document.getElementById('kidMode').checked;
+  showLoading("ANALYZING ADVERTISEMENT — PAVE-C v2.0...");
+
+  // Math scores run instantly
+  const scores = ME.analyze(text);
+  ntiScore = scores.ts;
+
+  // AI analysis
+  let aiResult = null;
+  if(apiKey) {
+    try {
+      aiResult = await callClaudeText(`Advertising honesty analyst, Indian context. Analyze this ad.
+
+AD: "${text.substring(0,500)}"
+
+JSON only:
+{"verdict":"HONEST|QUESTIONABLE|MISLEADING|HARMFUL","summary":"2 sentences","main_trick":"plain words","consumer_question":"one smart question","india_context":"regulatory/cultural issue or null","targets_children":true/false,"celebrity_note":"about celebrity or null","kid_moral":"child sentence or null"}`);
+    } catch(e) {}
+  }
+
+  renderAdResults(scores, aiResult, kidMode);
+}
+
+// ── RENDER FUNCTIONS ──────────────────────────────────────────────────────────
+const sc = (s) => s >= 80 ? 'var(--green)' : s >= 50 ? 'var(--amber)' : 'var(--red)';
+
+function renderPlateResults(vision, ate) {
+  const unlocked = ate.score >= 90;
+  let html = `
+<div class="fade-up">
+  <div class="sec">Plate Analysis — Claude Vision</div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
+    <div style="text-align:center;background:var(--panel);border-radius:6px;padding:12px;border:1px solid var(--border);">
+      <div style="font-size:24px;margin-bottom:4px;">${{chicken:'🍗',lamb:'🐑',beef:'🥩',pork:'🐷',fish:'🐟',mixed:'🍽️',none:'🫙',unknown:'❓'}[vision.meatType]||'🍽️'}</div>
+      <div style="font-family:var(--mono);font-size:14px;font-weight:900;color:var(--amber);text-transform:capitalize;">${vision.meatType}</div>
+      <div style="font-family:var(--mono);font-size:8px;color:var(--dim);">MEAT TYPE</div>
+    </div>
+    <div style="text-align:center;background:var(--panel);border-radius:6px;padding:12px;border:1px solid var(--border);">
+      <div style="font-family:var(--mono);font-size:22px;font-weight:900;color:var(--blue);">${vision.estimatedWeightG}g</div>
+      <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:4px;">EST. WEIGHT</div>
+    </div>
+    <div style="text-align:center;background:var(--panel);border-radius:6px;padding:12px;border:1px solid var(--border);">
+      <div style="font-family:var(--mono);font-size:22px;font-weight:900;color:${sc(vision.confidence)};">${vision.confidence}%</div>
+      <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:4px;">CONFIDENCE</div>
+    </div>
+  </div>
+
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:14px;">
+    <div style="font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:0.2em;margin-bottom:6px;">OBSERVATIONS</div>
+    ${(vision.observations||[]).map(o => `<div style="font-size:11px;color:var(--text);padding:3px 0;border-bottom:1px solid var(--faint);">· ${o}</div>`).join('')}
+    <div style="font-size:11px;color:var(--dim);margin-top:6px;font-style:italic;">${vision.reasoning}</div>
+  </div>
+
+  <div style="height:1px;background:var(--border);margin:16px 0;"></div>
+  <div class="sec">ATE Score — Algorithmic Trust Engine</div>
+
+  <div style="text-align:center;margin-bottom:14px;">
+    <div class="big-score" style="color:${sc(ate.score)};">${ate.score}</div>
+    <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:4px;">/ 100 · ATE TRANSPARENCY SCORE</div>
+  </div>
+
+  <div class="mrow"><div class="mrow-label">Δ Mismatch Norm</div><div class="mrow-val" style="color:${ate.delta>0.3?'var(--red)':'var(--green)'};">${ate.delta.toFixed(4)}</div></div>
+  <div class="mrow"><div class="mrow-label">α Coupling Constant</div><div class="mrow-val" style="color:${ate.alpha>0.7?'var(--green)':'var(--amber)'};">${ate.alpha.toFixed(4)}</div></div>
+  <div class="mrow"><div class="mrow-label">T(S) Trust Growth</div><div class="mrow-val" style="color:var(--blue);">${ate.T_S.toFixed(1)}</div></div>
+  <div class="mrow"><div class="mrow-label">VI Supply Chain Index</div><div class="mrow-val">${(ate.VI*100).toFixed(1)}%</div></div>
+  <div class="mrow"><div class="mrow-label">AS Audit Score</div><div class="mrow-val">${(ate.AS*100).toFixed(1)}%</div></div>
+  <div class="mrow"><div class="mrow-label">DRS Deception Risk</div><div class="mrow-val" style="color:${ate.DRS>0.4?'var(--red)':'var(--green)'};">${(ate.DRS*100).toFixed(1)}%</div></div>
+  <div class="mrow"><div class="mrow-label">Actual Meat Estimate</div><div class="mrow-val" style="color:var(--blue);">${vision.estimatedWeightG}g</div></div>
+  <div class="mrow"><div class="mrow-label">Claimed Meat</div><div class="mrow-val">${document.getElementById('claimedMeat').value}g</div></div>
+
+  ${unlocked ? `
+  <div style="margin-top:16px;padding:14px;background:#080a08;border:1px solid var(--green);border-radius:4px;">
+    <div style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:0.2em;margin-bottom:8px;">✓ SCORE ${ate.score}/100 — ANTI-AD GENERATOR UNLOCKED</div>
+    <button onclick="generateAntiAd()" class="btn" style="background:linear-gradient(135deg,#1a3010,#0a1808);border:1px solid var(--green);color:var(--green);width:100%;padding:12px;">▶ GENERATE VERIFIED ANTI-AD</button>
+    <div id="antiAdOutput" style="margin-top:12px;"></div>
+  </div>` : `
+  <div class="locked-box" style="margin-top:16px;">
+    <div style="font-size:32px;margin-bottom:8px;">🔒</div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--red);letter-spacing:0.1em;margin-bottom:8px;">ANTI-AD LOCKED — SCORE ${ate.score}/100</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--dim);">Minimum required: 90 · Deficit: ${90-ate.score} points</div>
+  </div>`}
+</div>`;
+
+  showResults(html);
+  renderUnifiedSidebar();
+}
+
+function computeHealthHaloFromVision(vision) {
+  const flags = [];
+  let score = 100;
+  const sugar = vision.sugarPer100g || 0;
+  const fat = vision.fatPer100g || 0;
+  const sodium = vision.sodiumPer100g || 0;
+  const cal = vision.caloriesPer100g || 0;
+
+  if(sugar > 40){ flags.push({type:'CRITICAL',msg:`Sugar: ${sugar}g/100g — exceeds Coca-Cola (10.6g/100ml)`}); score -= 30; }
+  else if(sugar > 20){ flags.push({type:'WARNING',msg:`Sugar: ${sugar}g/100g — high`}); score -= 15; }
+
+  const claims = (vision.frontClaims||[]).join(' ').toLowerCase();
+  const healthWords = ['health','healthy','nutritious','nourish','growth','immunity','energy','strength','champion','natural','wholesome'];
+  if(healthWords.some(w=>claims.includes(w)) && sugar > 20){ flags.push({type:'CRITICAL',msg:`Health claim + ${sugar}g sugar/100g = Health Halo detected`}); score -= 25; }
+
+  const ing = (vision.ingredients||[]);
+  if(ing.length > 0 && ing[0].toLowerCase().includes('sugar')){ flags.push({type:'CRITICAL',msg:`Sugar is ingredient #1 — largest by weight`}); score -= 20; }
+  if(ing.some(i=>i.toLowerCase().includes('palm oil'))){ flags.push({type:'WARNING',msg:`Palm oil present — often undisclosed saturated fat`}); score -= 5; }
+
+  if(sodium > 1.0){ flags.push({type:'WARNING',msg:`Sodium: ${sodium}g/100g — high`}); score -= 10; }
+  if(fat > 25){ flags.push({type:'WARNING',msg:`Fat: ${fat}g/100g — very high`}); score -= 10; }
+  if(cal > 450){ flags.push({type:'INFO',msg:`${cal} kcal/100g — energy-dense product`}); }
+
+  (vision.redFlags||[]).forEach(f => { flags.push({type:'WARNING',msg:f}); score -= 5; });
+
+  return { flags, labelScore: Math.max(0, score), vision };
+}
+
+function renderLabelResults(vision, halo) {
+  const flagColor = {CRITICAL:'var(--red)',WARNING:'var(--amber)',INFO:'var(--blue)'};
+  const ls = halo.labelScore;
+
+  let html = `
+<div class="fade-up">
+  <div class="sec">Label Analysis — Claude Vision</div>
+
+  <div style="margin-bottom:14px;">
+    <div style="font-family:var(--mono);font-size:14px;font-weight:900;color:var(--text);margin-bottom:2px;">${vision.brandName||'Unknown Brand'}</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--dim);">${vision.productName||''}</div>
+  </div>
+
+  <div style="text-align:center;margin-bottom:16px;">
+    <div class="big-score" style="color:${sc(ls)};">${ls}</div>
+    <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:4px;">/ 100 · LABEL TRUTH SCORE</div>
+  </div>
+
+  <!-- Nutrition facts -->
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:14px;">
+    ${[['Sugar',vision.sugarPer100g+'g','var(--red)'],['Fat',vision.fatPer100g+'g','var(--amber)'],['Protein',vision.proteinPer100g+'g','var(--green)'],['Sodium',vision.sodiumPer100g+'g','var(--amber)'],['Kcal',vision.caloriesPer100g,'var(--blue)']].map(([l,v,c])=>`
+    <div style="text-align:center;background:var(--panel);border-radius:5px;padding:8px 4px;border:1px solid var(--border);">
+      <div style="font-family:var(--mono);font-size:13px;font-weight:900;color:${c};">${v||'?'}</div>
+      <div style="font-family:var(--mono);font-size:7px;color:var(--dim);margin-top:2px;">${l}/100g</div>
+    </div>`).join('')}
+  </div>
+
+  <!-- Health Halo flags -->
+  <div class="sec">Health Halo Detection</div>
+  ${halo.flags.length === 0 ? '<div style="font-family:var(--mono);font-size:11px;color:var(--green);padding:10px 0;">✓ No health halo manipulation detected</div>' :
+    halo.flags.map(f => `
+  <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;background:var(--panel);border-left:2px solid ${flagColor[f.type]};border-radius:0 4px 4px 0;margin-bottom:6px;">
+    <span style="font-family:var(--mono);font-size:8px;color:${flagColor[f.type]};flex-shrink:0;margin-top:2px;">${f.type}</span>
+    <span style="font-size:11px;color:var(--text);line-height:1.5;">${f.msg}</span>
+  </div>`).join('')}
+
+  <!-- Front vs Reality -->
+  <div class="sec" style="margin-top:14px;">Front Claims vs Reality</div>
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:14px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);">
+      <div style="padding:8px 12px;font-family:var(--mono);font-size:8px;color:var(--amber);letter-spacing:0.2em;">FRONT OF PACK SAYS</div>
+      <div style="padding:8px 12px;font-family:var(--mono);font-size:8px;color:var(--red);letter-spacing:0.2em;border-left:1px solid var(--border);">LABEL REALITY</div>
+    </div>
+    ${(vision.frontClaims||[]).slice(0,5).map(claim => `
+    <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--faint);">
+      <div style="padding:8px 12px;font-size:11px;color:var(--text);">${claim}</div>
+      <div style="padding:8px 12px;font-size:11px;color:var(--dim);border-left:1px solid var(--faint);">${getRealityCheck(claim, vision)}</div>
+    </div>`).join('')}
+  </div>
+
+  <!-- Ingredients -->
+  <div class="sec">Ingredient Order (quantity = position)</div>
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:12px;">
+    ${(vision.ingredients||[]).slice(0,8).map((ing,i) => `
+    <div style="display:flex;gap:10px;align-items:center;padding:4px 0;border-bottom:1px solid var(--faint);">
+      <span style="font-family:var(--mono);font-size:10px;color:${i===0?'var(--red)':i<3?'var(--amber)':'var(--dim)'};font-weight:${i===0?'900':'400'};min-width:16px;">#${i+1}</span>
+      <span style="font-size:11px;color:${i===0?'var(--text)':'var(--dim)'};">${ing}</span>
+      ${i===0?'<span style="font-family:var(--mono);font-size:8px;background:var(--red);color:#fff;padding:1px 5px;border-radius:2px;margin-left:auto;">LARGEST</span>':''}
+    </div>`).join('')}
+  </div>
+</div>`;
+
+  showResults(html);
+  renderUnifiedSidebar();
+}
+
+function getRealityCheck(claim, vision) {
+  const cl = claim.toLowerCase();
+  if(cl.includes('health') || cl.includes('nourish')) return `Sugar: ${vision.sugarPer100g}g/100g`;
+  if(cl.includes('natural')) return `Processed ingredients present`;
+  if(cl.includes('energy') || cl.includes('strength')) return `${vision.caloriesPer100g} kcal/100g`;
+  if(cl.includes('vitamin') || cl.includes('mineral')) return `Micro-dose — may be insufficient`;
+  if(cl.includes('no added sugar') || cl.includes('unsweetened')) return `Check for fruit concentrate`;
+  if(cl.includes('whole grain')) { const wg = (vision.ingredients||[]).findIndex(i=>i.toLowerCase().includes('refined')); return wg > 0 ? `Refined flour also present (#${wg+1})` : `Verify % in full list`; }
+  return `Verify against full label`;
+}
+
+function renderAdResults(scores, aiResult, kidMode) {
+  const tsc = sc(scores.ts);
+  const vc = {HONEST:'var(--green)',QUESTIONABLE:'var(--amber)',MISLEADING:'var(--amber)',HARMFUL:'var(--red)'};
+
+  let html = `
+<div class="fade-up">
+  <div class="sec">PAVE-C v2.0 — Ad Analysis</div>
+  <div style="text-align:center;margin-bottom:16px;">
+    <div class="big-score" style="color:${tsc};">${scores.ts}</div>
+    <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:4px;">/ 100 · TRANSPARENCY SCORE</div>
+  </div>
+
+  <div class="bar-wrap"><div class="bar-label"><span>VI — Verifiability</span><span style="color:var(--green);">${Math.round(scores.vi*100)}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${scores.vi*100}%;background:var(--green);"></div></div></div>
+  <div class="bar-wrap"><div class="bar-label"><span>LPS — Linguistic Pressure</span><span style="color:var(--amber);">${Math.round(scores.lps*100)}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${scores.lps*100}%;background:var(--amber);"></div></div></div>
+  <div class="bar-wrap"><div class="bar-label"><span>H_ψ — Psychological Entropy</span><span style="color:var(--amber);">${Math.round(scores.hpsi.score*100)}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${scores.hpsi.score*100}%;background:var(--amber);"></div></div></div>
+  <div class="bar-wrap"><div class="bar-label"><span>SEC — Semantic Exaggeration</span><span style="color:var(--red);">${Math.round(scores.sec.norm*100)}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${scores.sec.norm*100}%;background:var(--red);"></div></div></div>
+  <div class="bar-wrap"><div class="bar-label"><span>MPI — Manipulation Pressure</span><span style="color:var(--red);">${Math.round(scores.mpi*100)}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${scores.mpi*100}%;background:var(--red);"></div></div></div>
+
+  ${scores.hpsi.act.length > 0 ? `
+  <div style="margin:10px 0;">
+    ${scores.hpsi.act.map(t=>`<span class="chip" style="background:rgba(240,96,96,0.15);border:1px solid rgba(240,96,96,0.4);color:var(--red);">${t.name}</span>`).join('')}
+  </div>` : ''}
+
+  ${aiResult ? `
+  <div style="height:1px;background:var(--border);margin:14px 0;"></div>
+  <div style="margin-bottom:10px;">
+    <span class="chip" style="background:${(vc[aiResult.verdict]||'var(--dim)')}20;border:1px solid ${(vc[aiResult.verdict]||'var(--dim)')}50;color:${vc[aiResult.verdict]||'var(--dim)'};">${aiResult.verdict}</span>
+    ${aiResult.targets_children?`<span class="chip" style="background:var(--purple)20;border:1px solid var(--purple)50;color:var(--purple);">⚠ TARGETS CHILDREN</span>`:''}
+    ${aiResult.celebrity_note?`<span class="chip" style="background:rgba(232,160,32,0.2);border:1px solid rgba(232,160,32,0.5);color:var(--amber);">🎬 CELEBRITY</span>`:''}
+  </div>
+  <p style="font-size:13px;color:var(--text);line-height:1.8;margin-bottom:12px;">${aiResult.summary}</p>
+  ${[['MAIN TRICK',aiResult.main_trick,'var(--amber)'],['SMART QUESTION',aiResult.consumer_question,'var(--blue)'],['INDIA CONTEXT',aiResult.india_context,'var(--dim)']].filter(([,v])=>v).map(([l,v,c])=>`
+  <div style="background:var(--panel);border-radius:6px;padding:10px;margin-bottom:8px;border:1px solid var(--border);">
+    <div style="font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:0.2em;margin-bottom:4px;">${l}</div>
+    <div style="font-size:12px;color:${c};line-height:1.6;">${v}</div>
+  </div>`).join('')}
+  ${aiResult.celebrity_note?`<div style="background:rgba(232,160,32,0.08);border:1px solid rgba(232,160,32,0.25);border-radius:6px;padding:12px;margin-bottom:8px;"><div style="font-family:var(--mono);font-size:8px;color:var(--amber);margin-bottom:6px;">🎬 CELEBRITY REALITY</div><div style="font-size:12px;color:var(--text);line-height:1.6;">${aiResult.celebrity_note}</div></div>`:''}
+  ${aiResult.kid_moral&&kidMode?`<div style="background:rgba(160,96,224,0.1);border:1px solid rgba(160,96,224,0.3);border-radius:6px;padding:14px;"><div style="font-family:var(--mono);font-size:8px;color:var(--purple);margin-bottom:8px;">👶 FOR KIDS</div><div style="font-size:14px;color:var(--text);font-style:italic;line-height:1.8;">"${aiResult.kid_moral}"</div></div>`:''}
+  ` : `<div style="font-family:var(--mono);font-size:10px;color:var(--dim);padding:10px;border:1px solid var(--border);border-radius:4px;margin-top:10px;">${apiKey ? '' : 'Set API key for AI verdict. Math scores above are complete.'}</div>`}
+</div>`;
+
+  showResults(html);
+  renderUnifiedSidebar();
+}
+
+function renderUnifiedSidebar() {
+  const { uti, aid, quad, ate, combinedNTI } = computeUnified();
+  const qColors = {I:'var(--green)',II:'var(--amber)',III:'var(--amber)',IV:'var(--red)'};
+  const qc = qColors[quad];
+  const qLabels = {I:'VERIFIED HONEST',II:'GENUINE PRODUCT · MANIPULATIVE AD',III:'FAKE PRODUCT · TRANSPARENT AD',IV:'DOUBLY DECEPTIVE'};
+
+  const existing = document.getElementById('unifiedSidebar');
+  const el = existing || document.createElement('div');
+  el.id = 'unifiedSidebar';
+  el.style.cssText = 'margin-top:16px;';
+  el.innerHTML = `
+<div style="height:1px;background:var(--border);margin-bottom:14px;"></div>
+<div class="sec">Unified Trust Score</div>
+<div style="text-align:center;padding:14px 0;border:1px solid ${qc}30;border-radius:8px;background:var(--panel);margin-bottom:12px;">
+  <div class="quad-big" style="color:${qc};">Q${quad}</div>
+  <div class="quad-label" style="color:${qc};">${qLabels[quad]}</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+  <div style="text-align:center;background:var(--panel);border-radius:6px;padding:10px;border:1px solid var(--border);">
+    <div style="font-family:var(--mono);font-size:20px;font-weight:900;color:var(--blue);">${ateScore!==null?ateScore:'—'}</div>
+    <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:3px;">ATE</div>
+  </div>
+  <div style="text-align:center;background:var(--panel);border-radius:6px;padding:10px;border:1px solid var(--border);">
+    <div style="font-family:var(--mono);font-size:20px;font-weight:900;color:${qc};">${uti.toFixed(1)}</div>
+    <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:3px;">UTI</div>
+  </div>
+  <div style="text-align:center;background:var(--panel);border-radius:6px;padding:10px;border:1px solid var(--border);">
+    <div style="font-family:var(--mono);font-size:20px;font-weight:900;color:var(--red);">${aid.toFixed(1)}</div>
+    <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:3px;">AID</div>
+  </div>
+</div>
+<div style="font-family:var(--mono);font-size:9px;color:var(--dim);line-height:2;border:1px solid var(--border);border-radius:4px;padding:10px;">
+  UTI = ATE × (NTI/100) = ${ate} × ${(combinedNTI/100).toFixed(2)} = <span style="color:${qc};">${uti.toFixed(1)}</span><br>
+  AID = ATE − UTI = <span style="color:var(--red);">${aid.toFixed(1)}</span>
+</div>`;
+
+  if(!existing) document.getElementById('results').appendChild(el);
+}
+
+// ── ATE MANUAL COMPUTE ────────────────────────────────────────────────────────
+function computeATE() {
+  const ate = computeATE_math(
+    parseFloat(document.getElementById('meatKg').value)||10,
+    parseInt(document.getElementById('plates').value)||150,
+    parseFloat(document.getElementById('claimedMeat').value)||120,
+    parseFloat(document.getElementById('claimedKcal').value)||850,
+    parseFloat(document.getElementById('prepHours').value)||2
+  );
+  ateScore = ate.score;
+  document.getElementById('auditClaimDisplay').textContent = document.getElementById('claimedMeat').value + 'g';
+  renderPlateResults({meatType:'unknown',estimatedWeightG:parseFloat(ate.actualMeat),estimatedCalories:parseInt(ate.actualKcal),freshnessScore:1,qualityScore:70,confidence:100,observations:['Manual data entry','Supply chain receipt verified','Crowd audit active'],portionAdequacy:'adequate',cookQuality:'average',reasoning:'Score computed from receipt data. Use plate scan for visual verification.'}, ate);
+}
+
+// ── AUDIT ─────────────────────────────────────────────────────────────────────
+function addAudit(val) {
+  audits.push(val);
+  const log = document.getElementById('auditLog');
+  const ate = computeATE_math(
+    parseFloat(document.getElementById('meatKg').value)||10,
+    parseInt(document.getElementById('plates').value)||150,
+    parseFloat(document.getElementById('claimedMeat').value)||120,
+    parseFloat(document.getElementById('claimedKcal').value)||850,
+    parseFloat(document.getElementById('prepHours').value)||2
+  );
+  ateScore = ate.score;
+  const entry = document.createElement('div');
+  entry.className = 'audit-entry';
+  entry.style.color = val ? 'var(--green)' : 'var(--red)';
+  entry.textContent = `AUDIT #${String(audits.length).padStart(3,'0')} — ${val?'VERIFIED ✓':'MISMATCH ✗'} — SCORE: ${ate.score}/100`;
+  log.insertBefore(entry, log.firstChild);
+  if(log.firstChild.textContent === 'NO AUDITS YET') log.removeChild(log.lastChild);
+  renderUnifiedSidebar();
+}
+
+function resetAudits() { audits = []; document.getElementById('auditLog').innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--dim);">NO AUDITS YET</div>'; }
+
+// ── ANTI-AD GENERATOR ─────────────────────────────────────────────────────────
+async function generateAntiAd() {
+  const btn = document.querySelector('#antiAdOutput').previousElementSibling;
+  btn.textContent = '▶ GENERATING...'; btn.disabled = true;
+  const ate = computeATE_math(parseFloat(document.getElementById('meatKg').value)||10,parseInt(document.getElementById('plates').value)||150,parseFloat(document.getElementById('claimedMeat').value)||120,parseFloat(document.getElementById('claimedKcal').value)||850,parseFloat(document.getElementById('prepHours').value)||2);
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,system:`You are the ATE Anti-Ad Protocol. RULES: ZERO adjectives. Numbers and verified facts ONLY. Cold military intelligence dossier tone. Format EXACTLY:\n[HEADLINE — 7 words max, ALL CAPS]\n\nMEAT/PLATE: [Xg] — SUPPLY CHAIN VERIFIED\nCALORIES: [X kcal] — MATHEMATICALLY DERIVED\nSUPPLY CHAIN INTEGRITY: [X%]\nCUSTOMER AUDIT CONFIRMATION: [X%]\n\nATE WATERMARK: TRANSPARENCY SCORE [X]/100 — DETERMINISTIC VERIFICATION COMPLETE`,messages:[{role:"user",content:`Generate Anti-Ad for: ${document.getElementById('shopName').value}\nVerified data: Meat ${ate.actualMeat}g · Calories ${ate.actualKcal} kcal · Score ${ate.score}/100 · VI ${(ate.VI*100).toFixed(1)}% · AS ${(ate.AS*100).toFixed(1)}% · DRS ${(ate.DRS*100).toFixed(1)}% · α ${ate.alpha.toFixed(4)}`}]})});
+    const d = await res.json(); const txt = d.content[0].text;
+    document.getElementById('antiAdOutput').innerHTML = `<div class="anti-ad">${txt}</div>`;
+  } catch(e) { document.getElementById('antiAdOutput').innerHTML = `<div style="color:var(--red);font-family:var(--mono);font-size:11px;">Generation failed: ${e.message}</div>`; }
+  btn.textContent = '▶ REGENERATE ANTI-AD'; btn.disabled = false;
+}
+
+// ── KNOWN PRODUCTS ────────────────────────────────────────────────────────────
+function loadKnownProduct(key) {
+  const p = HEALTH_HALO_DB[key];
+  if(!p) return;
+  const halo = computeHealthHaloScore(key);
+  labelScore = halo.labelScore;
+
+  // Build a vision-like object from known data
+  const vision = {
+    brandName: p.brand,
+    productName: p.category,
+    frontClaims: p.frontClaims,
+    ingredients: p.ingredients,
+    sugarPer100g: p.nutrition.sugar_per_100g,
+    fatPer100g: p.nutrition.fat_per_100g,
+    proteinPer100g: p.nutrition.protein_per_100g,
+    sodiumPer100g: p.nutrition.sodium_per_100g,
+    caloriesPer100g: p.nutrition.calories_per_100g,
+    redFlags: p.regulatory ? [p.regulatory] : [],
+    confidence: 100,
+    labelQuality: 'clear'
+  };
+  renderLabelResults(vision, halo);
+}
+
+// ── AD SAMPLES ────────────────────────────────────────────────────────────────
+const AD_SAMPLES = {
+  bournvita:"Bournvita — Tayyari Jeet Ki! Made with 11 vitamins and minerals, helps your child grow stronger and smarter. Champions drink Bournvita every day. Give your child the champion's edge and unlock their true potential!",
+  boost:"Boost is the secret of my energy! Made with iron, vitamins, and minerals — Boost helps your child stay energetic and active all day. The energy drink that champions trust. Boost your child's stamina today!",
+  vimal:"Royal taste, elite lifestyle. Chosen by stars, enjoyed by those who know quality. Our cardamom blend — when only the best will do. It's not just a product, it's a statement. The choice of champions.",
+  maggi:"Mummy bhook lagi! Maggi — the great family nourisher. Ready in 2 minutes, packed with iron and protein your family needs. Love in every bowl. The taste children trust.",
+  fairness:"Unlock your true potential. Lighter, brighter skin in just 4 weeks — proven by dermatologists. Your success story starts with the right glow. Don't let anything hold you back from the life you deserve.",
+  honest:"Our dal makhani uses 150g black dal per serving, slow-cooked for 8 hours. Contains 340 kcal and 12g protein per bowl. Sourced from Punjab farms. Spice level may vary by batch.",
+};
+function loadAdSample(key) { document.getElementById('adText').value = AD_SAMPLES[key] || ''; }
+
+// ── UI HELPERS ────────────────────────────────────────────────────────────────
+function setMode(n) {
+  currentMode = n;
+  [0,1,2].forEach(i => {
+    document.getElementById(`mode${i}`).style.display = i===n ? 'block' : 'none';
+    document.getElementById(`modeBtn${i}`).className = 'mode-btn' + (i===n?' active':'');
+  });
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('loadingState').style.display = 'none';
+}
+
+function showLoading(msg) {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('loadingState').style.display = 'flex';
+  document.getElementById('loadingText').textContent = msg;
+}
+
+function showResults(html) {
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'none';
+  const r = document.getElementById('results');
+  r.style.display = 'block';
+  r.innerHTML = html;
+}
+
+function showError(msg) {
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').innerHTML = `<div style="padding:20px;border:1px solid var(--red);border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--red);">ERROR: ${msg}</div>`;
+}
+
+function triggerUpload(id) { document.getElementById(id).click(); }
+
+function loadImg(mode, input) {
+  const file = input.files[0];
+  if(!file) return;
+  const url = URL.createObjectURL(file);
+  document.getElementById(`${mode}Img`).src = url;
+  document.getElementById(`${mode}Img`).style.display = 'block';
+  document.getElementById(`${mode}Hint`).style.display = 'none';
+  document.getElementById(`${mode}Clear`).style.display = 'flex';
+  const reader = new FileReader();
+  reader.onload = e => {
+    const b64 = e.target.result.split(',')[1];
+    if(mode==='plate') { plateB64 = {data:b64,type:file.type}; document.getElementById('plateScanBtn').disabled = false; }
+    else { labelB64 = {data:b64,type:file.type}; document.getElementById('labelScanBtn').disabled = false; }
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearImg(mode, e) {
+  e.stopPropagation();
+  document.getElementById(`${mode}Img`).style.display = 'none';
+  document.getElementById(`${mode}Hint`).style.display = 'block';
+  document.getElementById(`${mode}Clear`).style.display = 'none';
+  document.getElementById(`${mode}File`).value = '';
+  if(mode==='plate') { plateB64=null; document.getElementById('plateScanBtn').disabled=true; }
+  else { labelB64=null; document.getElementById('labelScanBtn').disabled=true; }
+}
+
+function handleDrop(e, mode) { e.preventDefault(); document.getElementById(`${mode}Zone`).classList.remove('drag'); const file=e.dataTransfer.files[0]; if(!file) return; const input=document.getElementById(`${mode}File`); const dt=new DataTransfer(); dt.items.add(file); input.files=dt.files; loadImg(mode,input); }
+function dragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag'); }
+function dragLeave(e) { e.currentTarget.classList.remove('drag'); }
+</script>
+</body>
+</html>
